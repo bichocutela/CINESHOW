@@ -19,22 +19,23 @@ class PlayerPage extends StatefulWidget {
 }
 
 class _PlayerPageState extends State<PlayerPage> {
+  late final PlaybackGateway _playbackGateway;
   VideoPlayerController? _controller;
   String? _errorMessage;
   bool _isLoading = true;
 
-  PlaybackGateway get _playbackGateway =>
-      widget.playbackGateway ?? InMemoryPlaybackGateway();
-
   @override
   void initState() {
     super.initState();
+    _playbackGateway =
+        widget.playbackGateway ?? InMemoryPlaybackGateway();
     _initializePlayer();
   }
 
   Future<void> _initializePlayer() async {
     final streamUrl = widget.media.streamUrl;
     if (streamUrl == null || streamUrl.isEmpty) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _errorMessage =
@@ -64,6 +65,7 @@ class _PlayerPageState extends State<PlayerPage> {
       });
       await controller.play();
     } catch (_) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
         _errorMessage = 'Não foi possível carregar este vídeo agora.';
@@ -80,7 +82,7 @@ class _PlayerPageState extends State<PlayerPage> {
     } else {
       await controller.play();
     }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override
