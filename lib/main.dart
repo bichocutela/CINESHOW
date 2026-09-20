@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'core/models/media_item.dart';
+import 'features/player/presentation/player_page.dart';
+
 void main() {
   runApp(const CineShowApp());
 }
@@ -121,7 +124,26 @@ class HomePage extends StatelessWidget {
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-            child: _HeroCard(item: _titles.first),
+            child: _HeroCard(
+              item: _titles.first,
+              onPlay: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const PlayerPage(
+                      media: MediaItem(
+                        id: 'last-horizon',
+                        title: 'O último horizonte',
+                        description:
+                            'Uma viagem para além do que parecia ser possível.',
+                        genre: 'Drama',
+                        year: 2026,
+                        durationMinutes: 118,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ),
         const SliverToBoxAdapter(
@@ -163,9 +185,10 @@ class HomePage extends StatelessWidget {
 }
 
 class _HeroCard extends StatelessWidget {
-  const _HeroCard({required this.item});
+  const _HeroCard({required this.item, required this.onPlay});
 
   final (String, String, IconData) item;
+  final VoidCallback onPlay;
 
   @override
   Widget build(BuildContext context) {
@@ -224,7 +247,7 @@ class _HeroCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 FilledButton.icon(
-                  onPressed: () {},
+                  onPressed: onPlay,
                   icon: const Icon(Icons.play_arrow),
                   label: const Text('Assistir agora'),
                   style: FilledButton.styleFrom(
