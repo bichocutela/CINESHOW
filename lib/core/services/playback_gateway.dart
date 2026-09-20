@@ -14,7 +14,8 @@ class PlaybackPosition {
   double get progress {
     if (duration.inMilliseconds == 0) return 0;
     return (position.inMilliseconds / duration.inMilliseconds)
-        .clamp(0.0, 1.0);
+        .clamp(0.0, 1.0)
+        .toDouble();
   }
 }
 
