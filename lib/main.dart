@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'core/models/media_item.dart';
 import 'core/services/live_catalog.dart';
 import 'core/services/app_updates.dart';
@@ -103,6 +102,8 @@ class _ShellState extends State<ShellPage> {
           setState(() => items[index] = updated);
         }
       });
+    } catch (_) {
+      // Keep cached metadata when background enrichment is unavailable.
     } finally {
       if (mounted && request == enrichmentGeneration) {
         setState(() => enriching = false);
