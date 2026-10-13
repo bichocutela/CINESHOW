@@ -32,6 +32,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    unawaited(PlaybackDisplay.acquire());
     gateway = widget.playbackGateway ?? PersistentPlaybackGateway();
     WidgetsBinding.instance.addObserver(this);
     saveTimer = Timer.periodic(const Duration(seconds: 10), (_) => _save());
@@ -150,6 +151,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     }
+    unawaited(PlaybackDisplay.release());
     super.dispose();
   }
 
