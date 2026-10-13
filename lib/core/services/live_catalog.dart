@@ -48,13 +48,13 @@ class LiveCatalog {
     final batches=await Future.wait(origins.entries.map((entry) async {
       final session=SourceSession(entry.value);
       try {
-        if(entry.key=='xonados')return await _xonados(session);
+        if(entry.key=='xonados'){final novels=await _xonados(session);return query==null?novels:novels.where((i)=>i.title.toLowerCase().contains(query.toLowerCase())).toList();}
         if(query!=null)return await _search(session,entry.key,query);
         return _cards(await session.get('/'),entry.key);
       }catch(_){errors.add(entry.key);return query==null?previous.where((i)=>i.sources.any((s)=>s.provider==entry.key)).toList():<MediaItem>[];}finally{session.close();}
     }));
     final merged=_merge(batches.expand((i)=>i).toList());
-    final filtered=query==null?merged:merged.where((i)=>i.title.toLowerCase().contains(query.toLowerCase())).toList();
+    final filtered=merged;
     if(query==null&&merged.isNotEmpty)await _save(merged);
     return CatalogResult(filtered,errors);
   }
@@ -89,7 +89,7 @@ class LiveCatalog {
   List<MediaItem> _merge(List<MediaItem> items){
     final groups=<String,MediaItem>{};
     for(final i in items){final key='${i.kind}:${i.title.toLowerCase().trim()}:${i.year}';final existing=groups[key];if(existing==null){groups[key]=i;}else{final sources=[...existing.sources];for(final s in i.sources){if(!sources.any((v)=>v.provider==s.provider&&v.sourceId==s.sourceId))sources.add(s);}groups[key]=MediaItem(id:existing.id,title:existing.title,description:existing.description,genre:existing.genre,year:existing.year,durationMinutes:existing.durationMinutes,posterUrl:existing.posterUrl??i.posterUrl,kind:existing.kind,isSeries:existing.isSeries,sources:sources);}}
-    return groups.values.toList();
+    return groups.entries.map((e){final i=e.value;return MediaItem(id:e.key,title:i.title,description:i.description,genre:i.genre,year:i.year,durationMinutes:i.durationMinutes,posterUrl:i.posterUrl,kind:i.kind,isSeries:i.isSeries,sources:i.sources);}).toList();
   }
   Future<List<Map<String,dynamic>>> episodes(MediaSource source)async{
     if(apiBase.isNotEmpty){final client=http.Client();try{final r=await client.get(Uri.parse('$apiBase/v1/details?provider=${source.provider}&id=${source.sourceId}')).timeout(const Duration(seconds:30));if(r.statusCode!=200)throw StateError('Detalhes indisponíveis');return ((jsonDecode(r.body) as Map)['episodes'] as List).map((e)=>Map<String,dynamic>.from(e as Map)).toList();}finally{client.close();}}
