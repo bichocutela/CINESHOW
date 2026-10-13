@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -18,7 +19,8 @@ class PlayerPage extends StatefulWidget {
   State<PlayerPage> createState() => _PlayerPageState();
 }
 
-class _PlayerPageState extends State<PlayerPage> {
+class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
+  Timer? _saveTimer;
   late final PlaybackGateway _playbackGateway;
   VideoPlayerController? _controller;
   String? _errorMessage;
@@ -28,7 +30,9 @@ class _PlayerPageState extends State<PlayerPage> {
   void initState() {
     super.initState();
     _playbackGateway =
-        widget.playbackGateway ?? InMemoryPlaybackGateway();
+        widget.playbackGateway ?? PersistentPlaybackGateway();
+    WidgetsBinding.instance.addObserver(this);
+    _saveTimer = Timer.periodic(const Duration(seconds: 10), (_) => _savePosition());
     _initializePlayer();
   }
 
@@ -85,8 +89,26 @@ class _PlayerPageState extends State<PlayerPage> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _savePosition() async {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+    await _playbackGateway.savePosition(PlaybackPosition(
+      mediaId: widget.media.id, position: controller.value.position,
+      duration: controller.value.duration));
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      unawaited(_savePosition());
+      _controller?.pause();
+    }
+  }
+
   @override
   void dispose() {
+    _saveTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     final controller = _controller;
     if (controller != null && controller.value.isInitialized) {
       _playbackGateway.savePosition(
