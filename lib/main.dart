@@ -9,6 +9,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'core/models/media_item.dart';
 import 'core/services/live_catalog.dart';
 import 'core/services/app_updates.dart';
+import 'core/services/catalog_metadata.dart';
+import 'features/player/presentation/watch_page.dart';
+import 'features/player/presentation/categories_page.dart';
 
 void main() => runApp(const CineShowApp());
 
@@ -16,15 +19,19 @@ class CineShowApp extends StatelessWidget {
   const CineShowApp({super.key});
   @override
   Widget build(BuildContext context) => MaterialApp(
-      title: 'CINESHOW',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
+        title: 'CINESHOW',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
           brightness: Brightness.dark,
           scaffoldBackgroundColor: const Color(0xFF0B0B10),
           colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFFE50914), brightness: Brightness.dark),
-          useMaterial3: true),
-      home: const ShellPage());
+            seedColor: const Color(0xFFE50914),
+            brightness: Brightness.dark,
+          ),
+          useMaterial3: true,
+        ),
+        home: const ShellPage(),
+      );
 }
 
 class ShellPage extends StatefulWidget {
@@ -39,6 +46,9 @@ class _ShellState extends State<ShellPage> {
   Set<String> favorites = {};
   List<String> errors = [];
   bool loading = true;
+  bool enriching = false;
+  int enrichmentGeneration = 0;
+  final metadata = CatalogMetadata();
   int tab = 0;
   String filter = 'Todos';
   @override
@@ -49,7 +59,7 @@ class _ShellState extends State<ShellPage> {
 
   Future<void> _load() async {
     final p = await SharedPreferences.getInstance();
-    final cached = await catalog.cached();
+    final cached = await metadata.cached(await catalog.cached());
     if (!mounted) return;
     setState(() {
       favorites = (p.getStringList('favorites') ?? []).toSet();
@@ -62,18 +72,40 @@ class _ShellState extends State<ShellPage> {
   Future<void> _refresh() async {
     try {
       final r = await catalog.refresh();
+      final enriched = await metadata.cached(r.items);
       if (!mounted) return;
       setState(() {
-        if (r.items.isNotEmpty) items = r.items;
+        if (enriched.isNotEmpty) items = enriched;
         errors = r.errors;
         loading = false;
       });
+      unawaited(_enrich());
     } catch (_) {
       if (mounted) {
         setState(() {
           loading = false;
           errors = ['Conexão'];
         });
+      }
+    }
+  }
+
+  Future<void> _enrich() async {
+    final request = ++enrichmentGeneration;
+    if (mounted) setState(() => enriching = true);
+    try {
+      await metadata.enrich(List.of(items), (updated) {
+        if (!mounted || request != enrichmentGeneration) return;
+        final index = items.indexWhere((item) => item.id == updated.id);
+        if (index >= 0 &&
+            (items[index].genre != updated.genre ||
+                items[index].posterUrl != updated.posterUrl)) {
+          setState(() => items[index] = updated);
+        }
+      });
+    } finally {
+      if (mounted && request == enrichmentGeneration) {
+        setState(() => enriching = false);
       }
     }
   }
@@ -89,129 +121,206 @@ class _ShellState extends State<ShellPage> {
   }
 
   void _details(MediaItem item) => Navigator.push(
-      context,
-      MaterialPageRoute<void>(
+        context,
+        MaterialPageRoute<void>(
           builder: (_) => DetailsPage(
-              item: item,
-              catalog: catalog,
-              isFavorite: favorites.contains(item.id),
-              onFavorite: () => _favorite(item))));
+            item: item,
+            catalog: catalog,
+            isFavorite: favorites.contains(item.id),
+            onFavorite: () => _favorite(item),
+          ),
+        ),
+      );
+  List<Widget> _sections(List<MediaItem> visible) {
+    const labels = {
+      'Filme': 'Filmes',
+      'Série': 'Séries',
+      'Novela': 'Novelas',
+      'Reality': 'Reality shows'
+    };
+    return [
+      for (final type in labels.keys)
+        if (visible.any((item) => item.typeLabel == type)) ...[
+          SliverToBoxAdapter(
+              child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+                  child: Text(labels[type]!,
+                      style: const TextStyle(
+                          fontSize: 22, fontWeight: FontWeight.bold)))),
+          SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final item = visible
+                        .where((item) => item.typeLabel == type)
+                        .elementAt(index);
+                    return PosterCard(item: item, onOpen: () => _details(item));
+                  },
+                      childCount: visible
+                          .where((item) => item.typeLabel == type)
+                          .length),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 180,
+                      childAspectRatio: .58,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 16))),
+        ],
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final visible =
-        items.where((i) => filter == 'Todos' || i.typeLabel == filter).toList();
+        items.where((i) => filter == 'Todos' || i.typeLabel == filter).toList()
+          ..sort((a, b) {
+            final kind = a.typeLabel.compareTo(b.typeLabel);
+            return kind != 0
+                ? kind
+                : a.title.toLowerCase().compareTo(b.title.toLowerCase());
+          });
     return Scaffold(
-        appBar: AppBar(
-            toolbarHeight: 88,
-            title: Image.asset('assets/logo_header.png',
-                height: 72, fit: BoxFit.contain, semanticLabel: 'Cine Show'),
-            actions: [
-              IconButton(
-                  onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                          builder: (_) =>
-                              SearchPage(catalog: catalog, onOpen: _details))),
-                  icon: const Icon(Icons.search),
-                  tooltip: 'Buscar')
-            ]),
-        body: IndexedStack(index: tab, children: [
+      appBar: AppBar(
+        toolbarHeight: 88,
+        title: Image.asset(
+          'assets/logo_header.png',
+          height: 72,
+          fit: BoxFit.contain,
+          semanticLabel: 'Cine Show',
+        ),
+        actions: [
+          IconButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => SearchPage(catalog: catalog, onOpen: _details),
+              ),
+            ),
+            icon: const Icon(Icons.search),
+            tooltip: 'Buscar',
+          ),
+        ],
+      ),
+      body: IndexedStack(
+        index: tab,
+        children: [
           RefreshIndicator(
-              onRefresh: _refresh,
-              child: CustomScrollView(slivers: [
+            onRefresh: _refresh,
+            child: CustomScrollView(
+              slivers: [
                 SliverToBoxAdapter(
-                    child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(children: [
-                              for (final type in [
-                                'Todos',
-                                'Filme',
-                                'Série',
-                                'Novela',
-                                'Reality'
-                              ])
-                                Padding(
-                                    padding: const EdgeInsets.only(right: 8),
-                                    child: ChoiceChip(
-                                        label: Text(type),
-                                        selected: filter == type,
-                                        onSelected: (_) =>
-                                            setState(() => filter = type)))
-                            ])))),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          for (final type in [
+                            'Todos',
+                            'Filme',
+                            'Série',
+                            'Novela',
+                            'Reality',
+                          ])
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ChoiceChip(
+                                label: Text(type),
+                                selected: filter == type,
+                                onSelected: (_) =>
+                                    setState(() => filter = type),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
                 if (errors.isNotEmpty)
                   SliverToBoxAdapter(
-                      child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Text(
-                              'Algumas fontes não responderam. Exibindo o catálogo salvo.',
-                              style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant)))),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'Algumas fontes não responderam. Exibindo o catálogo salvo.',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
                 if (loading)
                   const SliverFillRemaining(
-                      child: Center(child: CircularProgressIndicator()))
+                    child: Center(child: CircularProgressIndicator()),
+                  )
                 else if (visible.isEmpty)
                   const SliverFillRemaining(
-                      child:
-                          Center(child: Text('Nenhum título nesta categoria.')))
+                    child: Center(
+                      child: Text('Nenhum título nesta categoria.'),
+                    ),
+                  )
                 else ...[
                   SliverToBoxAdapter(
-                      child: HeroCard(
-                          item: visible.first,
-                          onOpen: () => _details(visible.first))),
-                  const SliverToBoxAdapter(
-                      child: Padding(
-                          padding: EdgeInsets.fromLTRB(16, 20, 16, 12),
-                          child: Text('Explore o catálogo',
-                              style: TextStyle(
-                                  fontSize: 22, fontWeight: FontWeight.bold)))),
-                  SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                      sliver: SliverGrid(
-                          delegate: SliverChildBuilderDelegate(
-                              (context, index) => PosterCard(
-                                  item: visible[index],
-                                  onOpen: () => _details(visible[index])),
-                              childCount: visible.length),
-                          gridDelegate:
-                              const SliverGridDelegateWithMaxCrossAxisExtent(
-                                  maxCrossAxisExtent: 180,
-                                  childAspectRatio: .58,
-                                  crossAxisSpacing: 12,
-                                  mainAxisSpacing: 16)))
-                ]
-              ])),
-          ListView(padding: const EdgeInsets.all(16), children: [
-            const Text('Minha lista',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            if (!items.any((i) => favorites.contains(i.id)))
-              const Padding(
+                    child: HeroCard(
+                      item: visible.first,
+                      onOpen: () => _details(visible.first),
+                    ),
+                  ),
+                  ..._sections(visible),
+                ],
+              ],
+            ),
+          ),
+          ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              const Text(
+                'Minha lista',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              if (!items.any((i) => favorites.contains(i.id)))
+                const Padding(
                   padding: EdgeInsets.only(top: 24),
                   child: Text(
-                      'Adicione títulos à sua lista na tela de detalhes.')),
-            for (final i in items.where((i) => favorites.contains(i.id)))
-              ListTile(
+                    'Adicione títulos à sua lista na tela de detalhes.',
+                  ),
+                ),
+              for (final i in items.where((i) => favorites.contains(i.id)))
+                ListTile(
+                  leading:
+                      SizedBox(width: 42, height: 62, child: Cover(item: i)),
                   title: Text(i.title),
                   subtitle: Text(i.typeLabel),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _details(i))
-          ]),
-          const SettingsPage()
-        ]),
-        bottomNavigationBar: NavigationBar(
-            selectedIndex: tab,
-            onDestinationSelected: (v) => setState(() => tab = v),
-            destinations: const [
-              NavigationDestination(
-                  icon: Icon(Icons.home_outlined), label: 'Início'),
-              NavigationDestination(
-                  icon: Icon(Icons.bookmark_border), label: 'Minha lista'),
-              NavigationDestination(
-                  icon: Icon(Icons.settings_outlined), label: 'Sobre')
-            ]));
+                  onTap: () => _details(i),
+                ),
+            ],
+          ),
+          CategoriesPage(items: items, onOpen: _details, enriching: enriching),
+          const SettingsPage(),
+        ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: tab,
+        onDestinationSelected: (v) => setState(() => tab = v),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            label: 'Início',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.bookmark_border),
+            label: 'Minha lista',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.category_outlined),
+            label: 'Categorias',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            label: 'Sobre',
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -221,22 +330,28 @@ class Cover extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final placeholder = ColoredBox(
-        color: const Color(0xFF25232F),
-        child: Center(
-            child: Icon(
-                item.kind == 'novela' ? Icons.live_tv : Icons.movie_outlined,
-                size: 48,
-                color: Colors.white38)));
+      color: const Color(0xFF25232F),
+      child: Center(
+        child: Icon(
+          item.kind == 'novela' ? Icons.live_tv : Icons.movie_outlined,
+          size: 48,
+          color: Colors.white38,
+        ),
+      ),
+    );
     return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: item.posterUrl == null
-            ? placeholder
-            : Image.network(item.posterUrl!,
-                fit: BoxFit.cover,
-                cacheWidth: 360,
-                errorBuilder: (_, error, stack) => placeholder,
-                loadingBuilder: (_, child, progress) =>
-                    progress == null ? child : placeholder));
+      borderRadius: BorderRadius.circular(12),
+      child: item.posterUrl == null
+          ? placeholder
+          : Image.network(
+              item.posterUrl!,
+              fit: BoxFit.cover,
+              cacheWidth: 360,
+              errorBuilder: (_, error, stack) => placeholder,
+              loadingBuilder: (_, child, progress) =>
+                  progress == null ? child : placeholder,
+            ),
+    );
   }
 }
 
@@ -246,19 +361,31 @@ class PosterCard extends StatelessWidget {
   final VoidCallback onOpen;
   @override
   Widget build(BuildContext context) => InkWell(
-      onTap: onOpen,
-      borderRadius: BorderRadius.circular(12),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(
-            child: SizedBox(width: double.infinity, child: Cover(item: item))),
-        const SizedBox(height: 8),
-        Text(item.title,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w600)),
-        Text('${item.typeLabel}${item.year > 0 ? ' · ${item.year}' : ''}',
-            style: const TextStyle(color: Colors.white54, fontSize: 12))
-      ]));
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: SizedBox(
+                width: double.infinity,
+                child: Cover(item: item),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              item.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            Text(
+              '${item.typeLabel}${item.year > 0 ? ' · ${item.year}' : ''}',
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+          ],
+        ),
+      );
 }
 
 class HeroCard extends StatelessWidget {
@@ -267,41 +394,60 @@ class HeroCard extends StatelessWidget {
   final VoidCallback onOpen;
   @override
   Widget build(BuildContext context) => Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           gradient: const LinearGradient(
-              colors: [Color(0xFF3A1420), Color(0xFF171722)])),
-      child: Row(children: [
-        SizedBox(width: 100, height: 150, child: Cover(item: item)),
-        const SizedBox(width: 20),
-        Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('EM DESTAQUE',
-              style: TextStyle(
-                  fontSize: 11, color: Colors.white54, letterSpacing: 2)),
-          const SizedBox(height: 10),
-          Text(item.title,
-              style:
-                  const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-              onPressed: onOpen,
-              icon: const Icon(Icons.info_outline),
-              label: const Text('Ver detalhes'))
-        ]))
-      ]));
+            colors: [Color(0xFF3A1420), Color(0xFF171722)],
+          ),
+        ),
+        child: Row(
+          children: [
+            SizedBox(width: 100, height: 150, child: Cover(item: item)),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'EM DESTAQUE',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white54,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    item.title,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: onOpen,
+                    icon: const Icon(Icons.info_outline),
+                    label: const Text('Ver detalhes'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 class DetailsPage extends StatefulWidget {
-  const DetailsPage(
-      {super.key,
-      required this.item,
-      required this.catalog,
-      required this.isFavorite,
-      required this.onFavorite});
+  const DetailsPage({
+    super.key,
+    required this.item,
+    required this.catalog,
+    required this.isFavorite,
+    required this.onFavorite,
+  });
   final MediaItem item;
   final LiveCatalog catalog;
   final bool isFavorite;
@@ -333,101 +479,139 @@ class _DetailsState extends State<DetailsPage> {
       if (mounted) setState(() => episodes = e);
     } catch (_) {
       if (mounted) {
-        setState(() => error =
-            'Não foi possível carregar os capítulos. Você pode abrir a fonte original.');
+        setState(
+          () => error =
+              'Não foi possível carregar os capítulos. Você pode abrir a fonte original.',
+        );
       }
     } finally {
       if (mounted) setState(() => loading = false);
     }
   }
 
-  Future<void> _open(String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null || uri.scheme != 'https') return;
-    try {
-      if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
-          mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Não foi possível abrir este endereço.')));
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Não foi possível abrir este endereço.')));
-      }
+  Future<void> _watch(String url, {int episodeIndex = -1}) async {
+    final playable =
+        episodes.where((episode) => episode['page_url'] is String).toList();
+    if (selected.provider == 'xonados') {
+      playable.sort((a, b) => a['id'].toString().compareTo(b['id'].toString()));
     }
+    final index = episodeIndex < 0
+        ? -1
+        : playable.indexWhere((episode) => episode['page_url'] == url);
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => WatchPage(
+          media: widget.item,
+          source: selected,
+          pageUrl: url,
+          episodes: playable,
+          episodeIndex: index,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: Text(widget.item.title)),
-      body: ListView(padding: const EdgeInsets.all(20), children: [
-        SizedBox(
-            height: 260,
-            child: Center(
-                child: SizedBox(width: 180, child: Cover(item: widget.item)))),
-        const SizedBox(height: 20),
-        Text(widget.item.title,
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
-        Text(
-            '${widget.item.typeLabel}${widget.item.year > 0 ? ' · ${widget.item.year}' : ''}',
-            style: const TextStyle(color: Colors.white60)),
-        const SizedBox(height: 16),
-        Wrap(spacing: 8, children: [
-          for (final s in widget.item.sources)
-            ChoiceChip(
-                label: Text(s.label),
-                selected: s == selected,
-                onSelected: loading
-                    ? null
-                    : (_) {
-                        setState(() => selected = s);
-                        if (widget.item.kind != 'movie') _episodes();
-                      })
-        ]),
-        const SizedBox(height: 12),
-        FilledButton.icon(
-            onPressed: () => _open(selected.pageUrl),
-            icon: const Icon(Icons.open_in_new),
-            label: const Text('Abrir na fonte')),
-        OutlinedButton.icon(
-            onPressed: () {
-              widget.onFavorite();
-              setState(() => favorite = !favorite);
-            },
-            icon: Icon(favorite ? Icons.bookmark : Icons.bookmark_border),
-            label:
-                Text(favorite ? 'Na minha lista' : 'Adicionar à minha lista')),
-        if (widget.item.description.isNotEmpty) Text(widget.item.description),
-        if (widget.item.kind != 'movie') ...[
-          const SizedBox(height: 20),
-          Row(children: [
-            const Expanded(
-                child: Text('Capítulos e episódios',
-                    style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
-            IconButton(
-                onPressed: loading ? null : _episodes,
-                icon: const Icon(Icons.refresh))
-          ]),
-          if (loading)
-            const Center(
-                child: Padding(
+        appBar: AppBar(title: Text(widget.item.title)),
+        body: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            SizedBox(
+              height: 260,
+              child: Center(
+                child: SizedBox(width: 180, child: Cover(item: widget.item)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              widget.item.title,
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+            ),
+            Text(
+              '${widget.item.typeLabel}${widget.item.year > 0 ? ' · ${widget.item.year}' : ''}',
+              style: const TextStyle(color: Colors.white60),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final s in widget.item.sources)
+                  ChoiceChip(
+                    label: Text(s.label),
+                    selected: s == selected,
+                    onSelected: loading
+                        ? null
+                        : (_) {
+                            setState(() => selected = s);
+                            if (widget.item.kind != 'movie') _episodes();
+                          },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () => _watch(selected.pageUrl),
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('Assistir'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () {
+                widget.onFavorite();
+                setState(() => favorite = !favorite);
+              },
+              icon: Icon(favorite ? Icons.bookmark : Icons.bookmark_border),
+              label:
+                  Text(favorite ? 'Na minha lista' : 'Adicionar à minha lista'),
+            ),
+            if (widget.item.description.isNotEmpty)
+              Text(widget.item.description),
+            if (widget.item.kind != 'movie') ...[
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Capítulos e episódios',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: loading ? null : _episodes,
+                    icon: const Icon(Icons.refresh),
+                  ),
+                ],
+              ),
+              if (loading)
+                const Center(
+                  child: Padding(
                     padding: EdgeInsets.all(20),
-                    child: CircularProgressIndicator())),
-          if (error != null)
-            Text(error!, style: const TextStyle(color: Colors.white60)),
-          if (!loading && error == null && episodes.isEmpty)
-            const Text('Consulte a lista completa na fonte original.'),
-          for (final e in episodes)
-            ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(e['title'] as String),
-                trailing: const Icon(Icons.open_in_new),
-                onTap: () =>
-                    _open((e['page_url'] as String?) ?? selected.pageUrl))
-        ]
-      ]));
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              if (error != null)
+                Text(error!, style: const TextStyle(color: Colors.white60)),
+              if (!loading && error == null && episodes.isEmpty)
+                const Text('Consulte a lista completa na fonte original.'),
+              for (final e in episodes)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(e['title'] as String),
+                  trailing: const Icon(Icons.play_circle_outline),
+                  onTap: () => _watch(
+                    (e['page_url'] as String?) ?? selected.pageUrl,
+                    episodeIndex: episodes
+                        .where((episode) => episode['page_url'] is String)
+                        .toList()
+                        .indexOf(e),
+                  ),
+                ),
+            ],
+          ],
+        ),
+      );
 }
 
 class SearchPage extends StatefulWidget {
@@ -489,29 +673,41 @@ class _SearchState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: const Text('Buscar')),
-      body: Column(children: [
-        Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
+        appBar: AppBar(title: const Text('Buscar')),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: TextField(
                 autofocus: true,
                 onChanged: _query,
                 decoration: const InputDecoration(
-                    hintText: 'Filmes, séries e novelas',
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder()))),
-        if (loading) const LinearProgressIndicator(),
-        if (error != null)
-          Padding(padding: const EdgeInsets.all(12), child: Text(error!)),
-        Expanded(
-            child: ListView.builder(
+                  hintText: 'Filmes, séries e novelas',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            if (loading) const LinearProgressIndicator(),
+            if (error != null)
+              Padding(padding: const EdgeInsets.all(12), child: Text(error!)),
+            Expanded(
+              child: ListView.builder(
                 itemCount: items.length,
                 itemBuilder: (_, i) => ListTile(
-                    title: Text(items[i].title),
-                    subtitle: Text(
-                        '${items[i].typeLabel} · ${items[i].sources.length} fonte(s)'),
-                    onTap: () => widget.onOpen(items[i]))))
-      ]));
+                  leading: SizedBox(
+                      width: 42, height: 62, child: Cover(item: items[i])),
+                  title: Text(items[i].title),
+                  subtitle: Text(
+                    '${items[i].typeLabel} · ${items[i].sources.length} fonte(s)',
+                  ),
+                  onTap: () => widget.onOpen(items[i]),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 class SettingsPage extends StatefulWidget {
@@ -598,11 +794,11 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
     final client = http.Client();
     try {
       final response = await client.get(
-          Uri.parse(
-              'https://api.github.com/repos/bichocutela/CINESHOW/releases/latest'),
-          headers: {
-            'Accept': 'application/vnd.github+json'
-          }).timeout(const Duration(seconds: 15));
+        Uri.parse(
+          'https://api.github.com/repos/bichocutela/CINESHOW/releases/latest',
+        ),
+        headers: {'Accept': 'application/vnd.github+json'},
+      ).timeout(const Duration(seconds: 15));
       if (response.statusCode != 200) throw StateError('Sem release');
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       final current = await PackageInfo.fromPlatform();
@@ -620,8 +816,9 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
       });
     } catch (_) {
       if (mounted) {
-        setState(() =>
-            message = 'Não foi possível consultar as atualizações agora.');
+        setState(
+          () => message = 'Não foi possível consultar as atualizações agora.',
+        );
       }
     } finally {
       client.close();
@@ -649,8 +846,10 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
       await _poll();
     } catch (_) {
       if (mounted) {
-        setState(() =>
-            message = 'Não foi possível iniciar o download. Tente novamente.');
+        setState(
+          () =>
+              message = 'Não foi possível iniciar o download. Tente novamente.',
+        );
       }
     } finally {
       if (mounted) setState(() => checking = false);
@@ -680,14 +879,18 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
     try {
       final state = await updater.install();
       if (mounted) {
-        setState(() => message = state == 'permission'
-            ? 'Autorize o CINESHOW a instalar atualizações. Ao voltar, o instalador será aberto.'
-            : 'Confirme a instalação no Android. O APK será removido após a atualização.');
+        setState(
+          () => message = state == 'permission'
+              ? 'Autorize o CINESHOW a instalar atualizações. Ao voltar, o instalador será aberto.'
+              : 'Confirme a instalação no Android. O APK será removido após a atualização.',
+        );
       }
     } on PlatformException catch (error) {
       if (mounted) {
-        setState(() =>
-            message = error.message ?? 'Não foi possível abrir o instalador.');
+        setState(
+          () =>
+              message = error.message ?? 'Não foi possível abrir o instalador.',
+        );
       }
     } catch (_) {
       if (mounted) {
@@ -704,46 +907,63 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
     final fraction =
         total > 0 ? (downloaded / total).clamp(0.0, 1.0).toDouble() : null;
     String megabytes(int bytes) => (bytes / 1048576).toStringAsFixed(1);
-    return ListView(padding: const EdgeInsets.all(24), children: [
-      const Text('CINESHOW',
-          style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
-      Text('Versão $version'),
-      const SizedBox(height: 24),
-      const Text(
-          'Catálogo de filmes, séries e novelas. Puxe o início para atualizar. Os vídeos abrem na fonte original.'),
-      const SizedBox(height: 24),
-      FilledButton.icon(
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const Text(
+          'CINESHOW',
+          style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900),
+        ),
+        Text('Versão $version'),
+        const SizedBox(height: 24),
+        const Text(
+          'Catálogo de filmes, séries e novelas. Puxe o início para atualizar. Assista dentro do app; os controles disponíveis dependem do player da fonte.',
+        ),
+        const SizedBox(height: 24),
+        FilledButton.icon(
           onPressed: checking || downloading || installing ? null : _updates,
           icon: const Icon(Icons.system_update),
-          label: Text(checking ? 'Consultando...' : 'Verificar atualização')),
-      if (available != null && !downloading && updateState != 'ready')
-        FilledButton.icon(
+          label: Text(checking ? 'Consultando...' : 'Verificar atualização'),
+        ),
+        if (available != null && !downloading && updateState != 'ready')
+          FilledButton.icon(
             onPressed: checking ? null : _download,
             icon: const Icon(Icons.download),
-            label: Text('Baixar versão ${available!.version}')),
-      if (downloading) ...[
-        const SizedBox(height: 16),
-        LinearProgressIndicator(value: fraction),
-        const SizedBox(height: 8),
-        Text(updateState == 'paused'
-            ? 'Aguardando conexão...'
-            : fraction == null
-                ? 'Baixando: ${megabytes(downloaded)} MB'
-                : '${(fraction * 100).toStringAsFixed(0)}% · ${megabytes(downloaded)} / ${megabytes(total)} MB'),
-        TextButton(onPressed: _cancel, child: const Text('Cancelar download')),
-      ],
-      if (updateState == 'ready') ...[
-        FilledButton.icon(
+            label: Text('Baixar versão ${available!.version}'),
+          ),
+        if (downloading) ...[
+          const SizedBox(height: 16),
+          LinearProgressIndicator(value: fraction),
+          const SizedBox(height: 8),
+          Text(
+            updateState == 'paused'
+                ? 'Aguardando conexão...'
+                : fraction == null
+                    ? 'Baixando: ${megabytes(downloaded)} MB'
+                    : '${(fraction * 100).toStringAsFixed(0)}% · ${megabytes(downloaded)} / ${megabytes(total)} MB',
+          ),
+          TextButton(
+            onPressed: _cancel,
+            child: const Text('Cancelar download'),
+          ),
+        ],
+        if (updateState == 'ready') ...[
+          FilledButton.icon(
             onPressed: installing ? null : _install,
             icon: const Icon(Icons.install_mobile),
-            label:
-                Text(installing ? 'Verificando...' : 'Instalar atualização')),
-        TextButton(
+            label: Text(installing ? 'Verificando...' : 'Instalar atualização'),
+          ),
+          TextButton(
             onPressed: installing ? null : _cancel,
-            child: const Text('Excluir APK baixado')),
+            child: const Text('Excluir APK baixado'),
+          ),
+        ],
+        if (message.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Text(message),
+          ),
       ],
-      if (message.isNotEmpty)
-        Padding(padding: const EdgeInsets.only(top: 16), child: Text(message)),
-    ]);
+    );
   }
 }
