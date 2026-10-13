@@ -10,6 +10,18 @@ const origins = {
   'tontons': 'https://tontonsfilmeurs.com',
   'xonados': 'https://www.xonados.com'
 };
+const providerOrigins = {
+  'rtfilmes': {'https://rtfilmes.com', 'https://assistirfilmeshdonline.com'},
+  'tontons': {'https://tontonsfilmeurs.com'},
+  'xonados': {'https://www.xonados.com'},
+};
+bool providerPage(String provider, String url) {
+  final uri = Uri.tryParse(url);
+  return uri != null &&
+      uri.scheme == 'https' &&
+      (providerOrigins[provider]?.contains(uri.origin) ?? false);
+}
+
 String plain(String s) => s
     .replaceAll(RegExp('<[^>]+>'), '')
     .replaceAll('&amp;', '&')
@@ -147,8 +159,9 @@ class LiveCatalog {
           .firstMatch(block);
       if (id == null || title == null) continue;
       final link = attributes(title[1]!)['href'] ?? '';
-      if (!link.startsWith('${origins[provider]}/filme/') &&
-          !link.startsWith('${origins[provider]}/serie/')) {
+      if (!providerPage(provider, link) ||
+          !(Uri.parse(link).path.startsWith('/filme/') ||
+              Uri.parse(link).path.startsWith('/serie/'))) {
         continue;
       }
       final img = RegExp(r'<img\b[^>]*>').firstMatch(block);
@@ -316,7 +329,10 @@ class LiveCatalog {
         client.close();
       }
     }
-    final session = SourceSession(origins[source.provider]!);
+    if (!providerPage(source.provider, source.pageUrl)) {
+      throw StateError('Fonte inválida');
+    }
+    final session = SourceSession(Uri.parse(source.pageUrl).origin);
     try {
       if (source.provider != 'xonados') {
         final page = await session.get(source.pageUrl);
