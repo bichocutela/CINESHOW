@@ -5,6 +5,9 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+concurrency:
+  group: cineshow-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -26,6 +29,7 @@ jobs:
           flutter create --platforms=android --org=com.bichocutela --project-name=cineshow .
           python scripts/configure_android.py
       - run: flutter pub get
+      - run: dart format lib test
       - run: dart fix --apply --code=curly_braces_in_flow_control_structures
       - run: dart format lib test
       - run: flutter analyze
