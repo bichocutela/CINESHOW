@@ -80,7 +80,11 @@ class MainActivity : FlutterActivity() {
                                 .putString("sha256", sha).putString("name", name).apply()
                             result.success(null)
                         }
-                        "status" -> result.success(downloadStatus())
+                        "status" -> {
+                            val status = downloadStatus()
+                            if (status["state"] == "failed") UpdateFiles.clear(this)
+                            result.success(status)
+                        }
                         "cancel" -> { UpdateFiles.clear(this); result.success(null) }
                         "install" -> validateAndInstall(result)
                         else -> result.notImplemented()
@@ -153,7 +157,10 @@ class MainActivity : FlutterActivity() {
                         }
                     } catch (e: Exception) { result?.error("INSTALL", e.message, null) }
                 }
-            } catch (e: Exception) { runOnUiThread { result?.error("VERIFY", e.message, null) } }
+            } catch (e: Exception) {
+                UpdateFiles.clear(this)
+                runOnUiThread { result?.error("VERIFY", e.message, null) }
+            }
         }
     }
 
