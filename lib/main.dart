@@ -100,11 +100,11 @@ class _ShellState extends State<ShellPage> {
         items.where((i) => filter == 'Todos' || i.typeLabel == filter).toList();
     return Scaffold(
         appBar: AppBar(
-            title: const Text('CINESHOW',
-                style: TextStyle(
-                    color: Color(0xFFE50914),
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2)),
+            toolbarHeight: 88,
+            title: Image.asset('assets/logo_header.png',
+                height: 72,
+                fit: BoxFit.contain,
+                semanticLabel: 'Cine Show'),
             actions: [
               IconButton(
                   onPressed: () => Navigator.push(
