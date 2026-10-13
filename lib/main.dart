@@ -104,9 +104,7 @@ class _ShellState extends State<ShellPage> {
         appBar: AppBar(
             toolbarHeight: 88,
             title: Image.asset('assets/logo_header.png',
-                height: 72,
-                fit: BoxFit.contain,
-                semanticLabel: 'Cine Show'),
+                height: 72, fit: BoxFit.contain, semanticLabel: 'Cine Show'),
             actions: [
               IconButton(
                   onPressed: () => Navigator.push(
@@ -573,8 +571,12 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
           updateState = next;
           downloaded = (status['bytes'] as num? ?? 0).toInt();
           total = (status['total'] as num? ?? 0).toInt();
-          if (next == 'failed') message = 'Download interrompido. Tente novamente.';
-          if (next == 'ready') message = 'Download concluído. Pronto para instalar.';
+          if (next == 'failed') {
+            message = 'Download interrompido. Tente novamente.';
+          }
+          if (next == 'ready') {
+            message = 'Download concluído. Pronto para instalar.';
+          }
         });
       }
       if (next == 'ready' && autoInstall && !installing && foreground) {
@@ -589,13 +591,18 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
   }
 
   Future<void> _updates() async {
-    setState(() { checking = true; message = ''; });
+    setState(() {
+      checking = true;
+      message = '';
+    });
     final client = http.Client();
     try {
       final response = await client.get(
-          Uri.parse('https://api.github.com/repos/bichocutela/CINESHOW/releases/latest'),
-          headers: {'Accept': 'application/vnd.github+json'})
-          .timeout(const Duration(seconds: 15));
+          Uri.parse(
+              'https://api.github.com/repos/bichocutela/CINESHOW/releases/latest'),
+          headers: {
+            'Accept': 'application/vnd.github+json'
+          }).timeout(const Duration(seconds: 15));
       if (response.statusCode != 200) throw StateError('Sem release');
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       final current = await PackageInfo.fromPlatform();
@@ -605,12 +612,17 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
       if (!mounted) return;
       setState(() {
         available = newer ? release : null;
-        message = !newer ? 'Você está na versão mais recente publicada.'
-            : release == null ? 'A nova versão está sendo preparada. Tente novamente em alguns minutos.'
-            : 'Nova versão disponível: ${release.version}';
+        message = !newer
+            ? 'Você está na versão mais recente publicada.'
+            : release == null
+                ? 'A nova versão está sendo preparada. Tente novamente em alguns minutos.'
+                : 'Nova versão disponível: ${release.version}';
       });
     } catch (_) {
-      if (mounted) setState(() => message = 'Não foi possível consultar as atualizações agora.');
+      if (mounted) {
+        setState(() =>
+            message = 'Não foi possível consultar as atualizações agora.');
+      }
     } finally {
       client.close();
       if (mounted) setState(() => checking = false);
@@ -620,14 +632,26 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
   Future<void> _download() async {
     final release = available;
     if (release == null) return;
-    setState(() { checking = true; message = 'Iniciando download...'; });
+    setState(() {
+      checking = true;
+      message = 'Iniciando download...';
+    });
     try {
       await updater.start(release);
       autoInstall = true;
-      if (mounted) setState(() { updateState = 'downloading'; downloaded = 0; total = 0; });
+      if (mounted) {
+        setState(() {
+          updateState = 'downloading';
+          downloaded = 0;
+          total = 0;
+        });
+      }
       await _poll();
     } catch (_) {
-      if (mounted) setState(() => message = 'Não foi possível iniciar o download. Tente novamente.');
+      if (mounted) {
+        setState(() =>
+            message = 'Não foi possível iniciar o download. Tente novamente.');
+      }
     } finally {
       if (mounted) setState(() => checking = false);
     }
@@ -637,23 +661,38 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
     autoInstall = false;
     try {
       await updater.cancel();
-      if (mounted) setState(() { updateState = 'idle'; message = 'Download cancelado e arquivo removido.'; });
+      if (mounted) {
+        setState(() {
+          updateState = 'idle';
+          message = 'Download cancelado e arquivo removido.';
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => message = 'Não foi possível cancelar agora.');
     }
   }
 
   Future<void> _install() async {
-    setState(() { installing = true; message = 'Verificando o APK...'; });
+    setState(() {
+      installing = true;
+      message = 'Verificando o APK...';
+    });
     try {
       final state = await updater.install();
-      if (mounted) setState(() => message = state == 'permission'
-          ? 'Autorize o CINESHOW a instalar atualizações. Ao voltar, o instalador será aberto.'
-          : 'Confirme a instalação no Android. O APK será removido após a atualização.');
+      if (mounted) {
+        setState(() => message = state == 'permission'
+            ? 'Autorize o CINESHOW a instalar atualizações. Ao voltar, o instalador será aberto.'
+            : 'Confirme a instalação no Android. O APK será removido após a atualização.');
+      }
     } on PlatformException catch (error) {
-      if (mounted) setState(() => message = error.message ?? 'Não foi possível abrir o instalador.');
+      if (mounted) {
+        setState(() =>
+            message = error.message ?? 'Não foi possível abrir o instalador.');
+      }
     } catch (_) {
-      if (mounted) setState(() => message = 'Não foi possível abrir o instalador.');
+      if (mounted) {
+        setState(() => message = 'Não foi possível abrir o instalador.');
+      }
     } finally {
       if (mounted) setState(() => installing = false);
     }
@@ -662,36 +701,49 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final downloading = updateState == 'downloading' || updateState == 'paused';
-    final fraction = total > 0 ? (downloaded / total).clamp(0.0, 1.0).toDouble() : null;
+    final fraction =
+        total > 0 ? (downloaded / total).clamp(0.0, 1.0).toDouble() : null;
     String megabytes(int bytes) => (bytes / 1048576).toStringAsFixed(1);
     return ListView(padding: const EdgeInsets.all(24), children: [
-      const Text('CINESHOW', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+      const Text('CINESHOW',
+          style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
       Text('Versão $version'),
       const SizedBox(height: 24),
-      const Text('Catálogo de filmes, séries e novelas. Puxe o início para atualizar. Os vídeos abrem na fonte original.'),
+      const Text(
+          'Catálogo de filmes, séries e novelas. Puxe o início para atualizar. Os vídeos abrem na fonte original.'),
       const SizedBox(height: 24),
       FilledButton.icon(
           onPressed: checking || downloading || installing ? null : _updates,
           icon: const Icon(Icons.system_update),
           label: Text(checking ? 'Consultando...' : 'Verificar atualização')),
       if (available != null && !downloading && updateState != 'ready')
-        FilledButton.icon(onPressed: checking ? null : _download,
-            icon: const Icon(Icons.download), label: Text('Baixar versão ${available!.version}')),
+        FilledButton.icon(
+            onPressed: checking ? null : _download,
+            icon: const Icon(Icons.download),
+            label: Text('Baixar versão ${available!.version}')),
       if (downloading) ...[
         const SizedBox(height: 16),
         LinearProgressIndicator(value: fraction),
         const SizedBox(height: 8),
-        Text(updateState == 'paused' ? 'Aguardando conexão...' : fraction == null
-            ? 'Baixando: ${megabytes(downloaded)} MB'
-            : '${(fraction * 100).toStringAsFixed(0)}% · ${megabytes(downloaded)} / ${megabytes(total)} MB'),
+        Text(updateState == 'paused'
+            ? 'Aguardando conexão...'
+            : fraction == null
+                ? 'Baixando: ${megabytes(downloaded)} MB'
+                : '${(fraction * 100).toStringAsFixed(0)}% · ${megabytes(downloaded)} / ${megabytes(total)} MB'),
         TextButton(onPressed: _cancel, child: const Text('Cancelar download')),
       ],
       if (updateState == 'ready') ...[
-        FilledButton.icon(onPressed: installing ? null : _install,
-            icon: const Icon(Icons.install_mobile), label: Text(installing ? 'Verificando...' : 'Instalar atualização')),
-        TextButton(onPressed: installing ? null : _cancel, child: const Text('Excluir APK baixado')),
+        FilledButton.icon(
+            onPressed: installing ? null : _install,
+            icon: const Icon(Icons.install_mobile),
+            label:
+                Text(installing ? 'Verificando...' : 'Instalar atualização')),
+        TextButton(
+            onPressed: installing ? null : _cancel,
+            child: const Text('Excluir APK baixado')),
       ],
-      if (message.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 16), child: Text(message)),
+      if (message.isNotEmpty)
+        Padding(padding: const EdgeInsets.only(top: 16), child: Text(message)),
     ]);
   }
 }
