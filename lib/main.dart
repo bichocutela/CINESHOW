@@ -1,410 +1,600 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-
+import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'core/models/media_item.dart';
-import 'features/player/presentation/player_page.dart';
+import 'core/services/live_catalog.dart';
 
-void main() {
-  runApp(const CineShowApp());
-}
+void main() => runApp(const CineShowApp());
 
 class CineShowApp extends StatelessWidget {
   const CineShowApp({super.key});
-
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context) => MaterialApp(
       title: 'CINESHOW',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF090A0F),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFE50914),
           brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-      ),
-      home: const ShellPage(),
-    );
-  }
+          scaffoldBackgroundColor: const Color(0xFF0B0B10),
+          colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFFE50914), brightness: Brightness.dark),
+          useMaterial3: true),
+      home: const ShellPage());
 }
 
 class ShellPage extends StatefulWidget {
   const ShellPage({super.key});
-
   @override
-  State<ShellPage> createState() => _ShellPageState();
+  State<ShellPage> createState() => _ShellState();
 }
 
-class _ShellPageState extends State<ShellPage> {
-  int _selectedIndex = 0;
+class _ShellState extends State<ShellPage> {
+  final catalog = LiveCatalog();
+  List<MediaItem> items = [];
+  Set<String> favorites = {};
+  List<String> errors = [];
+  bool loading = true;
+  int tab = 0;
+  String filter = 'Todos';
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
 
-  static const _pages = <Widget>[
-    HomePage(),
-    SearchPage(),
-    DownloadsPage(),
-    ProfilePage(),
-  ];
+  Future<void> _load() async {
+    final p = await SharedPreferences.getInstance();
+    final cached = await catalog.cached();
+    if (!mounted) return;
+    setState(() {
+      favorites = (p.getStringList('favorites') ?? []).toSet();
+      items = cached;
+      loading = cached.isEmpty;
+    });
+    await _refresh();
+  }
 
+  Future<void> _refresh() async {
+    try {
+      final r = await catalog.refresh();
+      if (!mounted) return;
+      setState(() {
+        if (r.items.isNotEmpty) items = r.items;
+        errors = r.errors;
+        loading = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          loading = false;
+          errors = ['Conexão'];
+        });
+      }
+    }
+  }
+
+  Future<void> _favorite(MediaItem item) async {
+    setState(() {
+      favorites.contains(item.id)
+          ? favorites.remove(item.id)
+          : favorites.add(item.id);
+    });
+    final p = await SharedPreferences.getInstance();
+    await p.setStringList('favorites', favorites.toList());
+  }
+
+  void _details(MediaItem item) => Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+          builder: (_) => DetailsPage(
+              item: item,
+              catalog: catalog,
+              isFavorite: favorites.contains(item.id),
+              onFavorite: () => _favorite(item))));
   @override
   Widget build(BuildContext context) {
+    final visible =
+        items.where((i) => filter == 'Todos' || i.typeLabel == filter).toList();
     return Scaffold(
-      body: IndexedStack(index: _selectedIndex, children: _pages),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() => _selectedIndex = index);
-        },
-        backgroundColor: const Color(0xFF0D0E14),
-        indicatorColor: const Color(0x33E50914),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Início',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.search),
-            label: 'Buscar',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.download_outlined),
-            selectedIcon: Icon(Icons.download),
-            label: 'Downloads',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Perfil',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  static const _titles = [
-    ('O último horizonte', 'Drama  •  2026', Icons.landscape),
-    ('Cidade em silêncio', 'Suspense  •  2025', Icons.location_city),
-    ('Depois da meia-noite', 'Série  •  2024', Icons.nightlight_round),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        SliverAppBar(
-          pinned: true,
-          backgroundColor: const Color(0xFF090A0F),
-          title: const Text(
-            'CINESHOW',
-            style: TextStyle(
-              color: Color(0xFFE50914),
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.6,
-            ),
-          ),
-          actions: [
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.cast_outlined),
-              tooltip: 'Transmitir',
-            ),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(Icons.notifications_none),
-              tooltip: 'Notificações',
-            ),
-          ],
-        ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-            child: _HeroCard(
-              item: _titles.first,
-              onPlay: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const PlayerPage(
-                      media: MediaItem(
-                        id: 'last-horizon',
-                        title: 'O último horizonte',
-                        description:
-                            'Uma viagem para além do que parecia ser possível.',
-                        genre: 'Drama',
-                        year: 2026,
-                        durationMinutes: 118,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-        const SliverToBoxAdapter(
-          child: _SectionTitle(title: 'Continue assistindo'),
-        ),
-        SliverToBoxAdapter(
-          child: SizedBox(
-            height: 172,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              scrollDirection: Axis.horizontal,
-              itemCount: _titles.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (_, index) => _PosterCard(item: _titles[index]),
-            ),
-          ),
-        ),
-        const SliverToBoxAdapter(
-          child: _SectionTitle(title: 'Escolhidos para você'),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-          sliver: SliverGrid(
-            delegate: SliverChildBuilderDelegate(
-              (_, index) => _PosterCard(item: _titles[index % _titles.length]),
-              childCount: 6,
-            ),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 14,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.68,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HeroCard extends StatelessWidget {
-  const _HeroCard({required this.item, required this.onPlay});
-
-  final (String, String, IconData) item;
-  final VoidCallback onPlay;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 360,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF331018), Color(0xFF14151D)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x66000000),
-            blurRadius: 24,
-            offset: Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -36,
-            top: 28,
-            child: Icon(item.$3, size: 260, color: const Color(0x22FFFFFF)),
-          ),
-          Positioned(
-            left: 22,
-            right: 22,
-            bottom: 22,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'DESTAQUE DA SEMANA',
-                  style: TextStyle(
+        appBar: AppBar(
+            title: const Text('CINESHOW',
+                style: TextStyle(
                     color: Color(0xFFE50914),
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  item.$1,
-                  style: const TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  item.$2,
-                  style: const TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 18),
-                FilledButton.icon(
-                  onPressed: onPlay,
-                  icon: const Icon(Icons.play_arrow),
-                  label: const Text('Assistir agora'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFE50914),
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2)),
+            actions: [
+              IconButton(
+                  onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                          builder: (_) =>
+                              SearchPage(catalog: catalog, onOpen: _details))),
+                  icon: const Icon(Icons.search),
+                  tooltip: 'Buscar')
+            ]),
+        body: IndexedStack(index: tab, children: [
+          RefreshIndicator(
+              onRefresh: _refresh,
+              child: CustomScrollView(slivers: [
+                SliverToBoxAdapter(
+                    child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(children: [
+                              for (final type in [
+                                'Todos',
+                                'Filme',
+                                'Série',
+                                'Novela',
+                                'Reality'
+                              ])
+                                Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: ChoiceChip(
+                                        label: Text(type),
+                                        selected: filter == type,
+                                        onSelected: (_) =>
+                                            setState(() => filter = type)))
+                            ])))),
+                if (errors.isNotEmpty)
+                  SliverToBoxAdapter(
+                      child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                              'Algumas fontes não responderam. Exibindo o catálogo salvo.',
+                              style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant)))),
+                if (loading)
+                  const SliverFillRemaining(
+                      child: Center(child: CircularProgressIndicator()))
+                else if (visible.isEmpty)
+                  const SliverFillRemaining(
+                      child:
+                          Center(child: Text('Nenhum título nesta categoria.')))
+                else ...[
+                  SliverToBoxAdapter(
+                      child: HeroCard(
+                          item: visible.first,
+                          onOpen: () => _details(visible.first))),
+                  const SliverToBoxAdapter(
+                      child: Padding(
+                          padding: EdgeInsets.fromLTRB(16, 20, 16, 12),
+                          child: Text('Explore o catálogo',
+                              style: TextStyle(
+                                  fontSize: 22, fontWeight: FontWeight.bold)))),
+                  SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      sliver: SliverGrid(
+                          delegate: SliverChildBuilderDelegate(
+                              (context, index) => PosterCard(
+                                  item: visible[index],
+                                  onOpen: () => _details(visible[index])),
+                              childCount: visible.length),
+                          gridDelegate:
+                              const SliverGridDelegateWithMaxCrossAxisExtent(
+                                  maxCrossAxisExtent: 180,
+                                  childAspectRatio: .58,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 16)))
+                ]
+              ])),
+          ListView(padding: const EdgeInsets.all(16), children: [
+            const Text('Minha lista',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+            if (!items.any((i) => favorites.contains(i.id)))
+              const Padding(
+                  padding: EdgeInsets.only(top: 24),
+                  child: Text(
+                      'Adicione títulos à sua lista na tela de detalhes.')),
+            for (final i in items.where((i) => favorites.contains(i.id)))
+              ListTile(
+                  title: Text(i.title),
+                  subtitle: Text(i.typeLabel),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _details(i))
+          ]),
+          const SettingsPage()
+        ]),
+        bottomNavigationBar: NavigationBar(
+            selectedIndex: tab,
+            onDestinationSelected: (v) => setState(() => tab = v),
+            destinations: const [
+              NavigationDestination(
+                  icon: Icon(Icons.home_outlined), label: 'Início'),
+              NavigationDestination(
+                  icon: Icon(Icons.bookmark_border), label: 'Minha lista'),
+              NavigationDestination(
+                  icon: Icon(Icons.settings_outlined), label: 'Sobre')
+            ]));
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title});
-
-  final String title;
-
+class Cover extends StatelessWidget {
+  const Cover({super.key, required this.item});
+  final MediaItem item;
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 12),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
-      ),
-    );
+    final placeholder = ColoredBox(
+        color: const Color(0xFF25232F),
+        child: Center(
+            child: Icon(
+                item.kind == 'novela' ? Icons.live_tv : Icons.movie_outlined,
+                size: 48,
+                color: Colors.white38)));
+    return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: item.posterUrl == null
+            ? placeholder
+            : Image.network(item.posterUrl!,
+                fit: BoxFit.cover,
+                cacheWidth: 360,
+                errorBuilder: (_, error, stack) => placeholder,
+                loadingBuilder: (_, child, progress) =>
+                    progress == null ? child : placeholder));
   }
 }
 
-class _PosterCard extends StatelessWidget {
-  const _PosterCard({required this.item});
-
-  final (String, String, IconData) item;
-
+class PosterCard extends StatelessWidget {
+  const PosterCard({super.key, required this.item, required this.onOpen});
+  final MediaItem item;
+  final VoidCallback onOpen;
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 116,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF4A1823), Color(0xFF1D2738)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Center(
-                child: Icon(item.$3, size: 46, color: Colors.white38),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            item.$1,
-            maxLines: 1,
+  Widget build(BuildContext context) => InkWell(
+      onTap: onOpen,
+      borderRadius: BorderRadius.circular(12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+            child: SizedBox(width: double.infinity, child: Cover(item: item))),
+        const SizedBox(height: 8),
+        Text(item.title,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          Text(
-            item.$2,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, color: Colors.white54),
-          ),
-        ],
-      ),
-    );
-  }
+            style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text('${item.typeLabel}${item.year > 0 ? ' · ${item.year}' : ''}',
+            style: const TextStyle(color: Colors.white54, fontSize: 12))
+      ]));
 }
 
-class SearchPage extends StatelessWidget {
-  const SearchPage({super.key});
-
+class HeroCard extends StatelessWidget {
+  const HeroCard({super.key, required this.item, required this.onOpen});
+  final MediaItem item;
+  final VoidCallback onOpen;
   @override
-  Widget build(BuildContext context) {
-    return const _PlaceholderPage(
-      icon: Icons.search,
-      title: 'Buscar',
-      message: 'Encontre filmes e séries quando o catálogo estiver conectado.',
-    );
-  }
+  Widget build(BuildContext context) => Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: const LinearGradient(
+              colors: [Color(0xFF3A1420), Color(0xFF171722)])),
+      child: Row(children: [
+        SizedBox(width: 100, height: 150, child: Cover(item: item)),
+        const SizedBox(width: 20),
+        Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('EM DESTAQUE',
+              style: TextStyle(
+                  fontSize: 11, color: Colors.white54, letterSpacing: 2)),
+          const SizedBox(height: 10),
+          Text(item.title,
+              style:
+                  const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+              onPressed: onOpen,
+              icon: const Icon(Icons.info_outline),
+              label: const Text('Ver detalhes'))
+        ]))
+      ]));
 }
 
-class DownloadsPage extends StatelessWidget {
-  const DownloadsPage({super.key});
-
+class DetailsPage extends StatefulWidget {
+  const DetailsPage(
+      {super.key,
+      required this.item,
+      required this.catalog,
+      required this.isFavorite,
+      required this.onFavorite});
+  final MediaItem item;
+  final LiveCatalog catalog;
+  final bool isFavorite;
+  final VoidCallback onFavorite;
   @override
-  Widget build(BuildContext context) {
-    return const _PlaceholderPage(
-      icon: Icons.download_outlined,
-      title: 'Downloads',
-      message: 'Seus conteúdos salvos para assistir offline aparecerão aqui.',
-    );
-  }
+  State<DetailsPage> createState() => _DetailsState();
 }
 
-class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+class _DetailsState extends State<DetailsPage> {
+  late bool favorite = widget.isFavorite;
+  late MediaSource selected = widget.item.sources.first;
+  List<Map<String, dynamic>> episodes = [];
+  bool loading = false;
+  String? error;
+  @override
+  void initState() {
+    super.initState();
+    if (widget.item.kind != 'movie') _episodes();
+  }
+
+  Future<void> _episodes() async {
+    setState(() {
+      loading = true;
+      error = null;
+      episodes = [];
+    });
+    try {
+      final e = await widget.catalog.episodes(selected);
+      if (mounted) setState(() => episodes = e);
+    } catch (_) {
+      if (mounted) {
+        setState(() => error =
+            'Não foi possível carregar os capítulos. Você pode abrir a fonte original.');
+      }
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> _open(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.scheme != 'https') return;
+    try {
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+          mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Não foi possível abrir este endereço.')));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Não foi possível abrir este endereço.')));
+      }
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return const _PlaceholderPage(
-      icon: Icons.person_outline,
-      title: 'Perfil',
-      message: 'Preferências, conta e perfis serão adicionados nesta área.',
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+      appBar: AppBar(title: Text(widget.item.title)),
+      body: ListView(padding: const EdgeInsets.all(20), children: [
+        SizedBox(
+            height: 260,
+            child: Center(
+                child: SizedBox(width: 180, child: Cover(item: widget.item)))),
+        const SizedBox(height: 20),
+        Text(widget.item.title,
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+        Text(
+            '${widget.item.typeLabel}${widget.item.year > 0 ? ' · ${widget.item.year}' : ''}',
+            style: const TextStyle(color: Colors.white60)),
+        const SizedBox(height: 16),
+        Wrap(spacing: 8, children: [
+          for (final s in widget.item.sources)
+            ChoiceChip(
+                label: Text(s.label),
+                selected: s == selected,
+                onSelected: loading
+                    ? null
+                    : (_) {
+                        setState(() => selected = s);
+                        if (widget.item.kind != 'movie') _episodes();
+                      })
+        ]),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+            onPressed: () => _open(selected.pageUrl),
+            icon: const Icon(Icons.open_in_new),
+            label: const Text('Abrir na fonte')),
+        OutlinedButton.icon(
+            onPressed: () {
+              widget.onFavorite();
+              setState(() => favorite = !favorite);
+            },
+            icon: Icon(favorite ? Icons.bookmark : Icons.bookmark_border),
+            label:
+                Text(favorite ? 'Na minha lista' : 'Adicionar à minha lista')),
+        if (widget.item.description.isNotEmpty) Text(widget.item.description),
+        if (widget.item.kind != 'movie') ...[
+          const SizedBox(height: 20),
+          Row(children: [
+            const Expanded(
+                child: Text('Capítulos e episódios',
+                    style:
+                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+            IconButton(
+                onPressed: loading ? null : _episodes,
+                icon: const Icon(Icons.refresh))
+          ]),
+          if (loading)
+            const Center(
+                child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator())),
+          if (error != null)
+            Text(error!, style: const TextStyle(color: Colors.white60)),
+          if (!loading && error == null && episodes.isEmpty)
+            const Text('Consulte a lista completa na fonte original.'),
+          for (final e in episodes)
+            ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(e['title'] as String),
+                trailing: const Icon(Icons.open_in_new),
+                onTap: () =>
+                    _open((e['page_url'] as String?) ?? selected.pageUrl))
+        ]
+      ]));
 }
 
-class _PlaceholderPage extends StatelessWidget {
-  const _PlaceholderPage({
-    required this.icon,
-    required this.title,
-    required this.message,
-  });
+class SearchPage extends StatefulWidget {
+  const SearchPage({super.key, required this.catalog, required this.onOpen});
+  final LiveCatalog catalog;
+  final void Function(MediaItem) onOpen;
+  @override
+  State<SearchPage> createState() => _SearchState();
+}
 
-  final IconData icon;
-  final String title;
-  final String message;
+class _SearchState extends State<SearchPage> {
+  Timer? timer;
+  int request = 0;
+  List<MediaItem> items = [];
+  bool loading = false;
+  String? error;
+  void _query(String q) {
+    timer?.cancel();
+    final generation = ++request;
+    if (q.trim().length < 2) {
+      setState(() {
+        items = [];
+        loading = false;
+        error = null;
+      });
+      return;
+    }
+    timer = Timer(const Duration(milliseconds: 400), () async {
+      if (!mounted) return;
+      setState(() {
+        loading = true;
+        error = null;
+      });
+      try {
+        final r = await widget.catalog.refresh(query: q.trim());
+        if (mounted && generation == request) {
+          setState(() {
+            items = r.items;
+            loading = false;
+            if (r.errors.isNotEmpty) error = 'Algumas fontes não responderam.';
+          });
+        }
+      } catch (_) {
+        if (mounted && generation == request) {
+          setState(() {
+            loading = false;
+            error = 'Não foi possível buscar agora.';
+          });
+        }
+      }
+    });
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 56, color: const Color(0xFFE50914)),
-              const SizedBox(height: 18),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white60, height: 1.5),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  void dispose() {
+    timer?.cancel();
+    super.dispose();
   }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+      appBar: AppBar(title: const Text('Buscar')),
+      body: Column(children: [
+        Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+                autofocus: true,
+                onChanged: _query,
+                decoration: const InputDecoration(
+                    hintText: 'Filmes, séries e novelas',
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder()))),
+        if (loading) const LinearProgressIndicator(),
+        if (error != null)
+          Padding(padding: const EdgeInsets.all(12), child: Text(error!)),
+        Expanded(
+            child: ListView.builder(
+                itemCount: items.length,
+                itemBuilder: (_, i) => ListTile(
+                    title: Text(items[i].title),
+                    subtitle: Text(
+                        '${items[i].typeLabel} · ${items[i].sources.length} fonte(s)'),
+                    onTap: () => widget.onOpen(items[i]))))
+      ]));
+}
+
+class SettingsPage extends StatefulWidget {
+  const SettingsPage({super.key});
+  @override
+  State<SettingsPage> createState() => _SettingsState();
+}
+
+class _SettingsState extends State<SettingsPage> {
+  String version = '';
+  String message = '';
+  bool checking = false;
+  @override
+  void initState() {
+    super.initState();
+    PackageInfo.fromPlatform().then((p) {
+      if (mounted) setState(() => version = '${p.version} (${p.buildNumber})');
+    }).catchError((Object _) {});
+  }
+
+  Future<void> _updates() async {
+    setState(() {
+      checking = true;
+      message = '';
+    });
+    final client = http.Client();
+    try {
+      final r = await client.get(
+          Uri.parse(
+              'https://api.github.com/repos/bichocutela/CINESHOW/releases/latest'),
+          headers: {
+            'Accept': 'application/vnd.github+json'
+          }).timeout(const Duration(seconds: 15));
+      if (r.statusCode != 200) throw StateError('Sem release');
+      final j = jsonDecode(r.body) as Map;
+      final current = await PackageInfo.fromPlatform();
+      final tag = (j['tag_name'] as String).replaceFirst(RegExp(r'^v'), '');
+      final nums = tag.split('.').map((n) => int.tryParse(n) ?? 0).toList();
+      final installed =
+          current.version.split('.').map((n) => int.tryParse(n) ?? 0).toList();
+      bool newer = false;
+      for (var i = 0; i < 3; i++) {
+        final a = i < nums.length ? nums[i] : 0,
+            b = i < installed.length ? installed[i] : 0;
+        if (a != b) {
+          newer = a > b;
+          break;
+        }
+      }
+      if (!mounted) return;
+      setState(() => message = newer
+          ? 'Nova versão disponível: $tag'
+          : 'Você está na versão mais recente publicada.');
+      if (newer) {
+        final url = j['html_url'] as String;
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() =>
+            message = 'Não foi possível consultar as atualizações agora.');
+      }
+    } finally {
+      client.close();
+      if (mounted) setState(() => checking = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      ListView(padding: const EdgeInsets.all(24), children: [
+        const Text('CINESHOW',
+            style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+        Text('Versão $version'),
+        const SizedBox(height: 24),
+        const Text(
+            'Catálogo de filmes, séries e novelas. Puxe o início para atualizar. Os vídeos abrem na fonte original.'),
+        const SizedBox(height: 24),
+        FilledButton.icon(
+            onPressed: checking ? null : _updates,
+            icon: const Icon(Icons.system_update),
+            label: Text(checking ? 'Consultando...' : 'Verificar atualização')),
+        if (message.isNotEmpty)
+          Padding(padding: const EdgeInsets.only(top: 16), child: Text(message))
+      ]);
 }

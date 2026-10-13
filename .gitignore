@@ -14,3 +14,11 @@ build/
 
 # Generated files
 coverage/
+
+# Never commit Android signing material or runtime catalogs.
+*.jks
+*.keystore
+android/key.properties
+*.sqlite3
+__pycache__/
+*.pyc

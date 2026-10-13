@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -18,7 +19,8 @@ class PlayerPage extends StatefulWidget {
   State<PlayerPage> createState() => _PlayerPageState();
 }
 
-class _PlayerPageState extends State<PlayerPage> {
+class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
+  Timer? _saveTimer;
   late final PlaybackGateway _playbackGateway;
   VideoPlayerController? _controller;
   String? _errorMessage;
@@ -27,8 +29,10 @@ class _PlayerPageState extends State<PlayerPage> {
   @override
   void initState() {
     super.initState();
-    _playbackGateway =
-        widget.playbackGateway ?? InMemoryPlaybackGateway();
+    _playbackGateway = widget.playbackGateway ?? PersistentPlaybackGateway();
+    WidgetsBinding.instance.addObserver(this);
+    _saveTimer =
+        Timer.periodic(const Duration(seconds: 10), (_) => _savePosition());
     _initializePlayer();
   }
 
@@ -46,9 +50,11 @@ class _PlayerPageState extends State<PlayerPage> {
 
     try {
       final controller = VideoPlayerController.networkUrl(Uri.parse(streamUrl));
+      _controller = controller;
       await controller.initialize();
 
-      final savedPosition = await _playbackGateway.loadPosition(widget.media.id);
+      final savedPosition =
+          await _playbackGateway.loadPosition(widget.media.id);
       if (savedPosition != null &&
           savedPosition.position < controller.value.duration) {
         await controller.seekTo(savedPosition.position);
@@ -65,6 +71,8 @@ class _PlayerPageState extends State<PlayerPage> {
       });
       await controller.play();
     } catch (_) {
+      await _controller?.dispose();
+      _controller = null;
       if (!mounted) return;
       setState(() {
         _isLoading = false;
@@ -85,8 +93,27 @@ class _PlayerPageState extends State<PlayerPage> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _savePosition() async {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+    await _playbackGateway.savePosition(PlaybackPosition(
+        mediaId: widget.media.id,
+        position: controller.value.position,
+        duration: controller.value.duration));
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      unawaited(_savePosition());
+      _controller?.pause();
+    }
+  }
+
   @override
   void dispose() {
+    _saveTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     final controller = _controller;
     if (controller != null && controller.value.isInitialized) {
       _playbackGateway.savePosition(

@@ -1,24 +1,32 @@
 # CINESHOW
 
-Aplicativo de streaming refeito em Flutter, com uma interface inspirada em serviços de catálogo sob demanda.
+Catálogo Flutter de filmes, séries e novelas com conectores públicos de Xonados,
+RTFilmes (Pobreflix) e Tontons (TopFlix).
 
-## Status
+- Catálogo inicial verificado, cache persistente e atualização ao abrir/puxar a tela.
+- Busca DooPlay, agrupamento de fontes e filtros por tipo.
+- Favoritos, detalhes, episódios de séries e capítulos/variantes do Xonados.
+- Reprodução na fonte original; player nativo separado para mídia autorizada.
+- API Python opcional, armazenamento SQLite e eventos de novos títulos.
+- Workflow de validação, APK Android e releases com assinatura permanente.
+- Consulta manual de novas versões na aba Sobre.
 
-A primeira versão contém a fundação visual e de navegação do app:
+Leia [configuração e limites](docs/INTEGRATION.md). Push com o app fechado requer
+backend hospedado e configuração de mensageria; ainda não está ativo.
 
-- Home com destaque, categorias e cards de conteúdo
-- Busca
-- Downloads
-- Perfil
-- Tema escuro com estética cinematográfica
-- Estrutura pronta para receber catálogo, autenticação e reprodução de vídeo
+## Desenvolvimento
 
-## Próximas etapas
+Flutter 3.35.7:
+```sh
+flutter create --platforms=android --org=com.bichocutela --project-name=cineshow .
+python scripts/configure_android.py
+flutter pub get
+flutter analyze
+flutter test
+```
 
-1. Definir a API e o modelo de catálogo.
-2. Integrar autenticação e perfis.
-3. Integrar player de vídeo e progresso de reprodução.
-4. Adicionar favoritos, histórico e downloads offline reais.
-5. Criar testes em Android, iOS e web.
-
-O projeto é uma reconstrução limpa e não reutiliza código proprietário, chaves, anúncios ou rastreadores do aplicativo anterior.
+Backend:
+```sh
+python -m unittest discover -s tests -v
+python -m backend.server
+```
