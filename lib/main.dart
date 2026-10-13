@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'core/models/media_item.dart';
 import 'core/services/live_catalog.dart';
+import 'core/services/app_updates.dart';
 
 void main() => runApp(const CineShowApp());
 
@@ -100,11 +102,9 @@ class _ShellState extends State<ShellPage> {
         items.where((i) => filter == 'Todos' || i.typeLabel == filter).toList();
     return Scaffold(
         appBar: AppBar(
-            title: const Text('CINESHOW',
-                style: TextStyle(
-                    color: Color(0xFFE50914),
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2)),
+            toolbarHeight: 88,
+            title: Image.asset('assets/logo_header.png',
+                height: 72, fit: BoxFit.contain, semanticLabel: 'Cine Show'),
             actions: [
               IconButton(
                   onPressed: () => Navigator.push(
@@ -520,16 +520,74 @@ class SettingsPage extends StatefulWidget {
   State<SettingsPage> createState() => _SettingsState();
 }
 
-class _SettingsState extends State<SettingsPage> {
+class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
+  final updater = AppUpdates();
   String version = '';
   String message = '';
+  String updateState = 'idle';
   bool checking = false;
+  bool installing = false;
+  bool foreground = true;
+  bool polling = false;
+  bool autoInstall = true;
+  int downloaded = 0;
+  int total = 0;
+  UpdateRelease? available;
+  Timer? progressTimer;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     PackageInfo.fromPlatform().then((p) {
       if (mounted) setState(() => version = '${p.version} (${p.buildNumber})');
     }).catchError((Object _) {});
+    _poll();
+    progressTimer = Timer.periodic(const Duration(seconds: 1), (_) => _poll());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    progressTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    foreground = state == AppLifecycleState.resumed;
+    if (foreground) _poll();
+  }
+
+  Future<void> _poll() async {
+    if (polling || !foreground) return;
+    polling = true;
+    try {
+      final status = await updater.status();
+      if (!mounted) return;
+      final next = status['state'] as String? ?? 'idle';
+      if (next != updateState || next == 'downloading' || next == 'paused') {
+        setState(() {
+          updateState = next;
+          downloaded = (status['bytes'] as num? ?? 0).toInt();
+          total = (status['total'] as num? ?? 0).toInt();
+          if (next == 'failed') {
+            message = 'Download interrompido. Tente novamente.';
+          }
+          if (next == 'ready') {
+            message = 'Download concluído. Pronto para instalar.';
+          }
+        });
+      }
+      if (next == 'ready' && autoInstall && !installing && foreground) {
+        autoInstall = false;
+        await _install();
+      }
+    } catch (_) {
+      // The native updater is only available in the Android build.
+    } finally {
+      polling = false;
+    }
   }
 
   Future<void> _updates() async {
@@ -539,36 +597,27 @@ class _SettingsState extends State<SettingsPage> {
     });
     final client = http.Client();
     try {
-      final r = await client.get(
+      final response = await client.get(
           Uri.parse(
               'https://api.github.com/repos/bichocutela/CINESHOW/releases/latest'),
           headers: {
             'Accept': 'application/vnd.github+json'
           }).timeout(const Duration(seconds: 15));
-      if (r.statusCode != 200) throw StateError('Sem release');
-      final j = jsonDecode(r.body) as Map;
+      if (response.statusCode != 200) throw StateError('Sem release');
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
       final current = await PackageInfo.fromPlatform();
-      final tag = (j['tag_name'] as String).replaceFirst(RegExp(r'^v'), '');
-      final nums = tag.split('.').map((n) => int.tryParse(n) ?? 0).toList();
-      final installed =
-          current.version.split('.').map((n) => int.tryParse(n) ?? 0).toList();
-      bool newer = false;
-      for (var i = 0; i < 3; i++) {
-        final a = i < nums.length ? nums[i] : 0,
-            b = i < installed.length ? installed[i] : 0;
-        if (a != b) {
-          newer = a > b;
-          break;
-        }
-      }
+      final tag = json['tag_name'] as String;
+      final newer = UpdateRelease.isNewer(tag, current.version);
+      final release = UpdateRelease.fromGitHub(json);
       if (!mounted) return;
-      setState(() => message = newer
-          ? 'Nova versão disponível: $tag'
-          : 'Você está na versão mais recente publicada.');
-      if (newer) {
-        final url = j['html_url'] as String;
-        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-      }
+      setState(() {
+        available = newer ? release : null;
+        message = !newer
+            ? 'Você está na versão mais recente publicada.'
+            : release == null
+                ? 'A nova versão está sendo preparada. Tente novamente em alguns minutos.'
+                : 'Nova versão disponível: ${release.version}';
+      });
     } catch (_) {
       if (mounted) {
         setState(() =>
@@ -580,21 +629,121 @@ class _SettingsState extends State<SettingsPage> {
     }
   }
 
+  Future<void> _download() async {
+    final release = available;
+    if (release == null) return;
+    setState(() {
+      checking = true;
+      message = 'Iniciando download...';
+    });
+    try {
+      await updater.start(release);
+      autoInstall = true;
+      if (mounted) {
+        setState(() {
+          updateState = 'downloading';
+          downloaded = 0;
+          total = 0;
+        });
+      }
+      await _poll();
+    } catch (_) {
+      if (mounted) {
+        setState(() =>
+            message = 'Não foi possível iniciar o download. Tente novamente.');
+      }
+    } finally {
+      if (mounted) setState(() => checking = false);
+    }
+  }
+
+  Future<void> _cancel() async {
+    autoInstall = false;
+    try {
+      await updater.cancel();
+      if (mounted) {
+        setState(() {
+          updateState = 'idle';
+          message = 'Download cancelado e arquivo removido.';
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => message = 'Não foi possível cancelar agora.');
+    }
+  }
+
+  Future<void> _install() async {
+    setState(() {
+      installing = true;
+      message = 'Verificando o APK...';
+    });
+    try {
+      final state = await updater.install();
+      if (mounted) {
+        setState(() => message = state == 'permission'
+            ? 'Autorize o CINESHOW a instalar atualizações. Ao voltar, o instalador será aberto.'
+            : 'Confirme a instalação no Android. O APK será removido após a atualização.');
+      }
+    } on PlatformException catch (error) {
+      if (mounted) {
+        setState(() =>
+            message = error.message ?? 'Não foi possível abrir o instalador.');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => message = 'Não foi possível abrir o instalador.');
+      }
+    } finally {
+      if (mounted) setState(() => installing = false);
+    }
+  }
+
   @override
-  Widget build(BuildContext context) =>
-      ListView(padding: const EdgeInsets.all(24), children: [
-        const Text('CINESHOW',
-            style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
-        Text('Versão $version'),
-        const SizedBox(height: 24),
-        const Text(
-            'Catálogo de filmes, séries e novelas. Puxe o início para atualizar. Os vídeos abrem na fonte original.'),
-        const SizedBox(height: 24),
+  Widget build(BuildContext context) {
+    final downloading = updateState == 'downloading' || updateState == 'paused';
+    final fraction =
+        total > 0 ? (downloaded / total).clamp(0.0, 1.0).toDouble() : null;
+    String megabytes(int bytes) => (bytes / 1048576).toStringAsFixed(1);
+    return ListView(padding: const EdgeInsets.all(24), children: [
+      const Text('CINESHOW',
+          style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+      Text('Versão $version'),
+      const SizedBox(height: 24),
+      const Text(
+          'Catálogo de filmes, séries e novelas. Puxe o início para atualizar. Os vídeos abrem na fonte original.'),
+      const SizedBox(height: 24),
+      FilledButton.icon(
+          onPressed: checking || downloading || installing ? null : _updates,
+          icon: const Icon(Icons.system_update),
+          label: Text(checking ? 'Consultando...' : 'Verificar atualização')),
+      if (available != null && !downloading && updateState != 'ready')
         FilledButton.icon(
-            onPressed: checking ? null : _updates,
-            icon: const Icon(Icons.system_update),
-            label: Text(checking ? 'Consultando...' : 'Verificar atualização')),
-        if (message.isNotEmpty)
-          Padding(padding: const EdgeInsets.only(top: 16), child: Text(message))
-      ]);
+            onPressed: checking ? null : _download,
+            icon: const Icon(Icons.download),
+            label: Text('Baixar versão ${available!.version}')),
+      if (downloading) ...[
+        const SizedBox(height: 16),
+        LinearProgressIndicator(value: fraction),
+        const SizedBox(height: 8),
+        Text(updateState == 'paused'
+            ? 'Aguardando conexão...'
+            : fraction == null
+                ? 'Baixando: ${megabytes(downloaded)} MB'
+                : '${(fraction * 100).toStringAsFixed(0)}% · ${megabytes(downloaded)} / ${megabytes(total)} MB'),
+        TextButton(onPressed: _cancel, child: const Text('Cancelar download')),
+      ],
+      if (updateState == 'ready') ...[
+        FilledButton.icon(
+            onPressed: installing ? null : _install,
+            icon: const Icon(Icons.install_mobile),
+            label:
+                Text(installing ? 'Verificando...' : 'Instalar atualização')),
+        TextButton(
+            onPressed: installing ? null : _cancel,
+            child: const Text('Excluir APK baixado')),
+      ],
+      if (message.isNotEmpty)
+        Padding(padding: const EdgeInsets.only(top: 16), child: Text(message)),
+    ]);
+  }
 }

@@ -1,6 +1,6 @@
 # Catálogo unificado e release
 
-## Aplicativo 0.2.0
+## Aplicativo 0.2.1
 
 O app inclui uma fotografia verificada do catálogo público em `assets/catalog.json`.
 Ao abrir, exibe o cache e consulta as três fontes em paralelo. Falhas preservam os
@@ -39,7 +39,7 @@ Nenhuma licença de conteúdo é presumida; integração nativa exige permissão
 
 Identificador permanente: `com.bichocutela.cineshow`.
 Flutter fixado em 3.35.7 para geração reproduzível do projeto Android.
-Versão inicial: `0.2.0+2`. A próxima deve ser `0.2.1+3` ou superior.
+Versão inicial: `0.2.0+2`. Versão atual: `0.2.1+3`; aumente o versionCode em cada release.
 Nunca troque applicationId nem chave de assinatura. Instalação por cima preserva os
 dados locais quando assinatura e id são iguais e o versionCode aumenta.
 
@@ -56,7 +56,12 @@ Tags `v0.2.0` etc devem coincidir com a versão do pubspec. O workflow valida c�
 testes e gera um APK release com assinatura permanente, checksum e release no GitHub.
 Sem secrets, publicação para explicitamente. APK de validação em branch é debug;
 não é um substituto do APK de release e não deve ser usado como base de upgrades.
-O botão Sobre → Verificar atualização consulta o último release público e abre sua
-página quando a versão é mais nova. O Android confirma a instalação; não há instalação
-silenciosa. Instalação automática, atualização forçada e downloads offline não estão
-implementados.
+O botão Sobre → Verificar atualização consulta o último release final público. Só oferece download quando existe APK oficial com SHA-256. O usuário inicia o download dentro do app; porcentagem e MB acompanham os bytes reais do DownloadManager. O download pode continuar em segundo plano e ser retomado na aba Sobre. Ao concluir com o app em primeiro plano, o APK é verificado (hash, pacote, versão crescente e assinatura igual à instalada) e o instalador Android é aberto.
+
+Na primeira instalação pelo CINESHOW, Android 8+ exige autorização para instalar apps desta fonte; ao voltar com a autorização concedida, o instalador abre. A confirmação final continua sendo do Android, sem instalação silenciosa.
+
+O APK fica apenas em `Android/data/com.bichocutela.cineshow/files/Download/updates/`. Um receiver de `MY_PACKAGE_REPLACED` limpa o arquivo após a atualização confirmada; a abertura do app também verifica essa limpeza. Cancelar ou iniciar outro download remove o download anterior. Se o usuário cancelar o instalador, pode tentar instalar novamente ou excluir o APK na aba Sobre. Arquivos baixados por navegadores na pasta pública Downloads não são apagados pelo app.
+
+A versão 0.2.0 ainda abre o GitHub: é necessário instalar a 0.2.1 uma vez para obter o atualizador interno nas próximas versões. Publique novos releases como pré-lançamento até o APK e checksum estarem anexados; só então marque como release final/mais recente.
+
+As logos oficiais permanecem intactas e seus hashes são verificados durante o build. O Android adiciona somente espaço ao redor do ícone para preservar a arte nas máscaras do launcher.
