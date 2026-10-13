@@ -29,10 +29,10 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _playbackGateway =
-        widget.playbackGateway ?? PersistentPlaybackGateway();
+    _playbackGateway = widget.playbackGateway ?? PersistentPlaybackGateway();
     WidgetsBinding.instance.addObserver(this);
-    _saveTimer = Timer.periodic(const Duration(seconds: 10), (_) => _savePosition());
+    _saveTimer =
+        Timer.periodic(const Duration(seconds: 10), (_) => _savePosition());
     _initializePlayer();
   }
 
@@ -53,7 +53,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       _controller = controller;
       await controller.initialize();
 
-      final savedPosition = await _playbackGateway.loadPosition(widget.media.id);
+      final savedPosition =
+          await _playbackGateway.loadPosition(widget.media.id);
       if (savedPosition != null &&
           savedPosition.position < controller.value.duration) {
         await controller.seekTo(savedPosition.position);
@@ -96,8 +97,9 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) return;
     await _playbackGateway.savePosition(PlaybackPosition(
-      mediaId: widget.media.id, position: controller.value.position,
-      duration: controller.value.duration));
+        mediaId: widget.media.id,
+        position: controller.value.position,
+        duration: controller.value.duration));
   }
 
   @override
