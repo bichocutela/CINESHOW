@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/media_item.dart';
 
@@ -94,5 +95,25 @@ class StreamResolver {
           'Nenhuma fonte autorizada foi configurada para ${item.title}.');
     }
     return url;
+  }
+}
+
+class PlaybackDisplay {
+  static const _channel = MethodChannel('cineshow/playback');
+  static int _leases = 0;
+  static Future<void> acquire() async {
+    if (++_leases == 1) {
+      try {
+        await _channel.invokeMethod<void>('screenAwake', {'enabled': true});
+      } catch (_) {}
+    }
+  }
+
+  static Future<void> release() async {
+    if (_leases > 0 && --_leases == 0) {
+      try {
+        await _channel.invokeMethod<void>('screenAwake', {'enabled': false});
+      } catch (_) {}
+    }
   }
 }
