@@ -363,6 +363,7 @@ class LiveCatalog {
             year: existing.year,
             durationMinutes: existing.durationMinutes,
             posterUrl: existing.posterUrl ?? i.posterUrl,
+            streamUrl: existing.streamUrl ?? i.streamUrl,
             kind: existing.kind,
             isSeries: existing.isSeries,
             sources: sources);
@@ -378,6 +379,7 @@ class LiveCatalog {
           year: i.year,
           durationMinutes: i.durationMinutes,
           posterUrl: i.posterUrl,
+          streamUrl: i.streamUrl,
           kind: i.kind,
           isSeries: i.isSeries,
           sources: i.sources);
