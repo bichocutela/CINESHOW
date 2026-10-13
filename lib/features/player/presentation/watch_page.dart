@@ -205,7 +205,9 @@ class _WatchState extends State<WatchPage> with WidgetsBindingObserver {
           Navigator.of(context).push(route).whenComplete(() {
             videoRoute = null;
             onHidden();
-            SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+            SystemChrome.setEnabledSystemUIMode(mounted && full
+                ? SystemUiMode.immersiveSticky
+                : SystemUiMode.edgeToEdge);
           });
         },
         onHideCustomWidget: () {
