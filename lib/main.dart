@@ -102,9 +102,7 @@ class _ShellState extends State<ShellPage> {
         appBar: AppBar(
             toolbarHeight: 88,
             title: Image.asset('assets/logo_header.png',
-                height: 72,
-                fit: BoxFit.contain,
-                semanticLabel: 'Cine Show'),
+                height: 72, fit: BoxFit.contain, semanticLabel: 'Cine Show'),
             actions: [
               IconButton(
                   onPressed: () => Navigator.push(
