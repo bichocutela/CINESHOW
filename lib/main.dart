@@ -46,6 +46,11 @@ class _ShellState extends State<ShellPage> {
   List<String> errors = [];
   bool loading = true;
   bool enriching = false;
+  bool syncingFull = false;
+  bool playing = false;
+  int fullGeneration = 0;
+  String fullStatus = '';
+  StreamSubscription<FullCatalogBatch>? fullSubscription;
   int enrichmentGeneration = 0;
   final metadata = CatalogMetadata();
   int tab = 0;
@@ -79,6 +84,7 @@ class _ShellState extends State<ShellPage> {
         loading = false;
       });
       unawaited(_enrich());
+      _syncFull();
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -86,6 +92,77 @@ class _ShellState extends State<ShellPage> {
           errors = ['Conexão'];
         });
       }
+    }
+  }
+
+  void _syncFull() {
+    if (syncingFull || playing) return;
+    final request = ++fullGeneration;
+    setState(() {
+      syncingFull = true;
+      fullStatus = 'Buscando o catálogo completo...';
+    });
+    fullSubscription = catalog.syncFull().listen((batch) async {
+      final enriched = await metadata.cached(batch.items);
+      if (!mounted || request != fullGeneration) return;
+      setState(() {
+        final current = {for (final item in items) item.id: item};
+        final combined = Map<String, MediaItem>.of(current);
+        for (final item in enriched) {
+          final saved = current[item.id];
+          combined[item.id] = saved == null
+              ? item
+              : item.copyWith(
+                  genre: saved.genre.isNotEmpty ? saved.genre : null,
+                  posterUrl: saved.posterUrl);
+        }
+        items = combined.values.toList();
+        fullStatus =
+            '${items.length} títulos · ${batch.pages} páginas consultadas${batch.failed.isEmpty ? '' : ' · Algumas fontes não responderam'}';
+        if (batch.complete) {
+          fullStatus =
+              '${items.length} títulos · Catálogos percorridos até a última página disponível';
+        }
+      });
+      if (!enriching) unawaited(_enrich());
+    }, onError: (Object _) {
+      if (mounted && request == fullGeneration) {
+        setState(() {
+          syncingFull = false;
+          fullStatus = 'Busca completa interrompida. Puxe para retomar.';
+        });
+      }
+    }, onDone: () {
+      if (mounted && request == fullGeneration) {
+        setState(() => syncingFull = false);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    catalog.cancelFullSync();
+    metadata.cancel();
+    fullSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _playbackChanged(bool value) {
+    if (!mounted) return;
+    playing = value;
+    if (value) {
+      fullGeneration++;
+      enrichmentGeneration++;
+      catalog.cancelFullSync();
+      metadata.cancel();
+      fullSubscription?.cancel();
+      setState(() {
+        syncingFull = false;
+        enriching = false;
+        fullStatus = 'Busca do catálogo pausada durante a reprodução';
+      });
+    } else {
+      _syncFull();
     }
   }
 
@@ -129,6 +206,7 @@ class _ShellState extends State<ShellPage> {
             catalog: catalog,
             isFavorite: favorites.contains(item.id),
             onFavorite: () => _favorite(item),
+            onPlaybackChanged: _playbackChanged,
           ),
         ),
       );
@@ -137,11 +215,16 @@ class _ShellState extends State<ShellPage> {
       'Filme': 'Filmes',
       'Série': 'Séries',
       'Novela': 'Novelas',
-      'Reality': 'Reality shows'
+      'Reality': 'Reality shows',
+      'Programa': 'Programas'
+    };
+    final groups = {
+      for (final type in labels.keys)
+        type: visible.where((item) => item.typeLabel == type).toList()
     };
     return [
       for (final type in labels.keys)
-        if (visible.any((item) => item.typeLabel == type)) ...[
+        if (groups[type]!.isNotEmpty) ...[
           SliverToBoxAdapter(
               child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
@@ -152,20 +235,15 @@ class _ShellState extends State<ShellPage> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
               sliver: SliverGrid(
                   delegate: SliverChildBuilderDelegate((context, index) {
-                    final item = visible
-                        .where((item) => item.typeLabel == type)
-                        .elementAt(index);
+                    final item = groups[type]![index];
                     return PosterCard(item: item, onOpen: () => _details(item));
-                  },
-                      childCount: visible
-                          .where((item) => item.typeLabel == type)
-                          .length),
+                  }, childCount: groups[type]!.length),
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 180,
                       childAspectRatio: .58,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 16))),
-        ],
+        ]
     ];
   }
 
@@ -221,6 +299,7 @@ class _ShellState extends State<ShellPage> {
                             'Série',
                             'Novela',
                             'Reality',
+                            'Programa',
                           ])
                             Padding(
                               padding: const EdgeInsets.only(right: 8),
@@ -236,6 +315,18 @@ class _ShellState extends State<ShellPage> {
                     ),
                   ),
                 ),
+                if (fullStatus.isNotEmpty)
+                  SliverToBoxAdapter(
+                      child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (syncingFull)
+                                  const LinearProgressIndicator(),
+                                const SizedBox(height: 8),
+                                Text(fullStatus),
+                              ]))),
                 if (errors.isNotEmpty)
                   SliverToBoxAdapter(
                     child: Padding(
@@ -448,11 +539,13 @@ class DetailsPage extends StatefulWidget {
     required this.catalog,
     required this.isFavorite,
     required this.onFavorite,
+    this.onPlaybackChanged,
   });
   final MediaItem item;
   final LiveCatalog catalog;
   final bool isFavorite;
   final VoidCallback onFavorite;
+  final void Function(bool)? onPlaybackChanged;
   @override
   State<DetailsPage> createState() => _DetailsState();
 }
@@ -476,13 +569,15 @@ class _DetailsState extends State<DetailsPage> {
       episodes = [];
     });
     try {
-      final e = await widget.catalog.episodes(selected);
+      final e = await widget.catalog.episodes(selected, onBatch: (batch) {
+        if (mounted) setState(() => episodes = batch);
+      });
       if (mounted) setState(() => episodes = e);
     } catch (_) {
       if (mounted) {
         setState(
           () => error =
-              'Não foi possível carregar os capítulos. Você pode abrir a fonte original.',
+              'A busca de todo o histórico foi interrompida. Os capítulos já encontrados permanecem disponíveis; toque em atualizar para tentar novamente.',
         );
       }
     } finally {
@@ -496,21 +591,30 @@ class _DetailsState extends State<DetailsPage> {
     if (selected.provider == 'xonados') {
       playable.sort((a, b) => a['id'].toString().compareTo(b['id'].toString()));
     }
-    final index = episodeIndex < 0
+    var index = episodeIndex < 0
         ? -1
         : playable.indexWhere((episode) => episode['page_url'] == url);
-    await Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => WatchPage(
-          media: widget.item,
-          source: selected,
-          pageUrl: url,
-          episodes: playable,
-          episodeIndex: index,
+    if (index < 0 && playable.isNotEmpty && url == selected.pageUrl) {
+      index = selected.provider == 'xonados' ? playable.length - 1 : 0;
+      url = playable[index]['page_url'] as String;
+    }
+    widget.onPlaybackChanged?.call(true);
+    try {
+      await Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+          builder: (_) => WatchPage(
+            media: widget.item,
+            source: selected,
+            pageUrl: url,
+            episodes: playable,
+            episodeIndex: index,
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      widget.onPlaybackChanged?.call(false);
+    }
   }
 
   @override
