@@ -3,10 +3,10 @@
 Catálogo Flutter de filmes, séries e novelas com conectores públicos de Xonados,
 RTFilmes (Pobreflix) e Tontons (TopFlix).
 
-- Catálogo inicial verificado, cache persistente e atualização ao abrir/puxar a tela.
-- Busca DooPlay, agrupamento de fontes e filtros por tipo.
+- Catálogo inicial verificado, varredura paginada sem limite fixo de títulos, cache e retomada da indexação.
+- Categorias, gêneros, capas, busca DooPlay e agrupamento de fontes.
 - Favoritos, detalhes, episódios de séries e capítulos/variantes do Xonados.
-- Reprodução na fonte original; player nativo separado para mídia autorizada.
+- Reprodução dentro do app: player nativo para mídia direta e WebView para players incorporados; navegador por escolha explícita.
 - API Python opcional, armazenamento SQLite e eventos de novos títulos.
 - Workflow de validação, APK Android e releases com assinatura permanente.
 - Consulta manual de novas versões na aba Sobre.
