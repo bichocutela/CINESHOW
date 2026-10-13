@@ -23,6 +23,7 @@ s=s.replace('    buildTypes {','''    signingConfigs {
     }
     buildTypes {''',1)
 s=s.replace('signingConfig = signingConfigs.getByName("debug")','signingConfig = signingConfigs.getByName(if (signingFile.exists()) "release" else "debug")')
+s += '\ndependencies { implementation("androidx.core:core:1.13.1") }\n'
 p.write_text(s)
 m=Path('android/app/src/main/AndroidManifest.xml');s=m.read_text();s=s.replace('    <application','    <uses-permission android:name="android.permission.INTERNET" />\n    <application',1);s=s.replace('android:label="cineshow"','android:label="CINESHOW"');m.write_text(s)
 
@@ -53,4 +54,22 @@ shutil.copyfile('assets/logo_icon.png', res / 'drawable/cineshow_mark.png')
  </inset></foreground>
 </adaptive-icon>''')
 s=m.read_text().replace('android:icon="@mipmap/ic_launcher"', 'android:icon="@drawable/cineshow_launcher" android:roundIcon="@drawable/cineshow_launcher"')
+m.write_text(s)
+
+# Native in-app download, installer handoff, and cleanup after package replacement.
+activity = Path('android/app/src/main/kotlin/com/bichocutela/cineshow/MainActivity.kt')
+activity.parent.mkdir(parents=True, exist_ok=True)
+shutil.copyfile('android_templates/MainActivity.kt', activity)
+(res / 'xml').mkdir(exist_ok=True)
+(res / 'xml/cineshow_update_paths.xml').write_text('''<paths xmlns:android="http://schemas.android.com/apk/res/android">
+ <external-files-path name="updates" path="Download/updates/" />
+</paths>''')
+s=m.read_text().replace('    <application', '    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n    <application', 1)
+s=s.replace('</application>', '''<provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.updates" android:exported="false" android:grantUriPermissions="true">
+ <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/cineshow_update_paths" />
+</provider>
+<receiver android:name=".UpdateInstalledReceiver" android:exported="false">
+ <intent-filter><action android:name="android.intent.action.MY_PACKAGE_REPLACED" /></intent-filter>
+</receiver>
+</application>''')
 m.write_text(s)
