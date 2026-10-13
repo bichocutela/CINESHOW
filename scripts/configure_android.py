@@ -28,6 +28,13 @@ m=Path('android/app/src/main/AndroidManifest.xml');s=m.read_text();s=s.replace('
 
 # Keep the official PNG byte-identical; only the Android container adds safe space.
 import shutil
+import hashlib
+for asset, expected in {
+ 'logo_header.png': '64d186868579c25c859fb100b257599fb3c4d49ec37bb9a09668e0713a613007',
+ 'logo_icon.png': '0eec1cfcfc82f5f071fca9322d396ff3d9e31d356489e16b0548c65b49ea14aa',
+}.items():
+ if hashlib.sha256((Path('assets') / asset).read_bytes()).hexdigest() != expected:
+  raise SystemExit('Official logo must remain unchanged: ' + asset)
 res = Path('android/app/src/main/res')
 for directory in ('drawable', 'drawable-anydpi-v26', 'values'):
  (res / directory).mkdir(parents=True, exist_ok=True)
@@ -41,7 +48,7 @@ shutil.copyfile('assets/logo_icon.png', res / 'drawable/cineshow_mark.png')
 </layer-list>''')
 (res / 'drawable-anydpi-v26/cineshow_launcher.xml').write_text('''<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
  <background android:drawable="@color/cineshow_icon_background" />
- <foreground><inset android:inset="26%">
+ <foreground><inset android:inset="29%">
   <bitmap android:src="@drawable/cineshow_mark" android:gravity="fill" android:filter="true" />
  </inset></foreground>
 </adaptive-icon>''')
