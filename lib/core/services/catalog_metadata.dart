@@ -6,6 +6,10 @@ import 'video_sources.dart';
 
 class CatalogMetadata {
   int _generation = 0;
+  void cancel() {
+    _generation++;
+  }
+
   static const cacheKey = 'cineshow.metadata.v1';
   static Map<String, dynamic> parse(String page, String pageUrl) {
     final genres = <String>{};
@@ -170,6 +174,9 @@ class CatalogMetadata {
           };
         }
         onItem(_apply(item, combined));
+        if (cursor % 20 == 0 && generation == _generation) {
+          await prefs.setString(cacheKey, jsonEncode(data));
+        }
       }
     }
 
