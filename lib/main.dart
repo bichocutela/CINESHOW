@@ -531,7 +531,7 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
   bool installing = false;
   bool foreground = true;
   bool polling = false;
-  bool autoInstall = false;
+  bool autoInstall = true;
   int downloaded = 0;
   int total = 0;
   UpdateRelease? available;
