@@ -110,7 +110,7 @@ class CatalogMetadata {
     final genre = entry['genre'] as String?;
     return item.copyWith(
       genre: genre != null && genre.isNotEmpty ? genre : null,
-      posterUrl: item.posterUrl ?? entry['poster_url'] as String?,
+      posterUrl: entry['poster_url'] as String? ?? item.posterUrl,
     );
   }
 
@@ -139,16 +139,16 @@ class CatalogMetadata {
           continue;
         }
         final combined = <String, dynamic>{};
+        var fetched = false;
         for (final source in item.sources) {
           if (!providerPage(source.provider, source.pageUrl)) {
             continue;
           }
           final session = SourceSession(Uri.parse(source.pageUrl).origin);
           try {
-            final metadata = parse(
-              await session.get(source.pageUrl),
-              source.pageUrl,
-            );
+            final page = await session.get(source.pageUrl);
+            fetched = true;
+            final metadata = parse(page, source.pageUrl);
             if ((metadata['genre'] as String).isNotEmpty) {
               combined['genre'] = metadata['genre'];
             }
@@ -163,10 +163,12 @@ class CatalogMetadata {
             session.close();
           }
         }
-        data[item.id] = {
-          ...combined,
-          'checked': DateTime.now().millisecondsSinceEpoch,
-        };
+        if (fetched) {
+          data[item.id] = {
+            ...combined,
+            'checked': DateTime.now().millisecondsSinceEpoch,
+          };
+        }
         onItem(_apply(item, combined));
       }
     }
