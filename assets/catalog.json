@@ -18,7 +18,8 @@
         "imdb_id": null,
         "modified_at": null
       }
-    ]
+    ],
+    "genre": "Crime, Suspense"
   },
   {
     "id": "9bae3fec524f6ec4b711",
@@ -50,7 +51,8 @@
         "imdb_id": null,
         "modified_at": null
       }
-    ]
+    ],
+    "genre": "Ação, Aventura, Ficção científica, Super-Heróis"
   },
   {
     "id": "38c35b158669e6cd8808",
@@ -71,7 +73,8 @@
         "imdb_id": null,
         "modified_at": null
       }
-    ]
+    ],
+    "genre": "Suspense, Terror"
   },
   {
     "id": "0566c884cd56cd4c6acd",
@@ -103,7 +106,8 @@
         "imdb_id": null,
         "modified_at": null
       }
-    ]
+    ],
+    "genre": "Coleção Fim do Mundo, Ficção científica, Mistério, Suspense"
   },
   {
     "id": "2408c200c4173a6750c3",
@@ -135,7 +139,8 @@
         "imdb_id": null,
         "modified_at": null
       }
-    ]
+    ],
+    "genre": "Ação, Comédia, Suspense"
   },
   {
     "id": "3f0b6416c7a9872c900c",
@@ -167,7 +172,8 @@
         "imdb_id": null,
         "modified_at": null
       }
-    ]
+    ],
+    "genre": "Ação, Aventura, Fantasia"
   },
   {
     "id": "d115aa70cd2210a79f29",
@@ -2132,7 +2138,7 @@
     "title": "Avenida Brasil",
     "kind": "novela",
     "year": 0,
-    "poster_url": null,
+    "poster_url": "https://www.xonados.com/img/27481f78a40f.jpg",
     "description": "",
     "sources": [
       {
