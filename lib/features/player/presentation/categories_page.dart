@@ -75,6 +75,7 @@ class _CategoriesState extends State<CategoriesPage> {
                   'Série',
                   'Novela',
                   'Reality',
+                  'Programa',
                 ])
                   ChoiceChip(
                     label: Text(value),
