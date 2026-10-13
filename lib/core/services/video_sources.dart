@@ -65,7 +65,8 @@ class VideoSources {
             frames.add(VideoSource('Player ${frames.length + 1}', url));
           }
         }
-        if (frames.isNotEmpty) return frames;
+        if (frames.isNotEmpty)
+          return [...frames, VideoSource('Player da fonte', pageUrl)];
       } else {
         final result = <VideoSource>[];
         for (final selection in selections(page)) {
@@ -85,7 +86,8 @@ class VideoSources {
             /* Other advertised servers can remain available. */
           }
         }
-        if (result.isNotEmpty) return result;
+        if (result.isNotEmpty)
+          return [...result, VideoSource('Player da fonte', pageUrl)];
       }
     } catch (_) {
       // The original public player remains accessible inside the WebView.
