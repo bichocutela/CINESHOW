@@ -216,7 +216,8 @@ class _WatchState extends State<WatchPage> with WidgetsBindingObserver {
       );
     }
     if (!mounted || web != controller) return;
-    await controller.loadRequest(Uri.parse(sources[selected].url));
+    await controller.loadRequest(Uri.parse(sources[selected].url),
+        headers: {'Referer': pageUrl});
     if (mounted) setState(() {});
   }
 
