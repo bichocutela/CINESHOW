@@ -51,6 +51,7 @@ class _WatchState extends State<WatchPage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    unawaited(PlaybackDisplay.acquire());
     WidgetsBinding.instance.addObserver(this);
     saveTimer = Timer.periodic(const Duration(seconds: 10), (_) => _save());
     _resolve();
@@ -302,6 +303,7 @@ class _WatchState extends State<WatchPage> with WidgetsBindingObserver {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     }
+    unawaited(PlaybackDisplay.release());
     super.dispose();
   }
 
