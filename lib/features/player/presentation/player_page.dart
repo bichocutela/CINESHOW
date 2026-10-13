@@ -50,6 +50,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
 
     try {
       final controller = VideoPlayerController.networkUrl(Uri.parse(streamUrl));
+      _controller = controller;
       await controller.initialize();
 
       final savedPosition = await _playbackGateway.loadPosition(widget.media.id);
@@ -69,6 +70,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       });
       await controller.play();
     } catch (_) {
+      await _controller?.dispose();
+      _controller = null;
       if (!mounted) return;
       setState(() {
         _isLoading = false;
