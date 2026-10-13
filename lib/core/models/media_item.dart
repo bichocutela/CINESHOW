@@ -102,6 +102,7 @@ class MediaItem {
         'series' => 'Série',
         'novela' => 'Novela',
         'reality' => 'Reality',
+        'program' => 'Programa',
         _ => 'Filme',
       };
 }
