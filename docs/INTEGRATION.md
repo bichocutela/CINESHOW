@@ -1,14 +1,16 @@
 # Catálogo unificado e release
 
-## Aplicativo 0.2.1
+## Aplicativo 0.2.2
 
 O app inclui uma fotografia verificada do catálogo público em `assets/catalog.json`.
 Ao abrir, exibe o cache e consulta as três fontes em paralelo. Falhas preservam os
 itens anteriores da fonte. Busca DooPlay obtém o nonce da página a cada consulta.
 Os detalhes carregam episódios de séries e os capítulos/variantes do Xonados.
-A reprodução desta versão abre a fonte original no navegador externo. Um iframe
-não é enviado ao player nativo. Reprodução nativa permanece disponível na classe
-PlayerPage para URLs de mídia autorizadas, mas não está conectada a esses embeds.
+O botão Assistir abre o conteúdo dentro do aplicativo. Fontes HTTPS de mídia direta configuradas usam o player nativo com play/pause, linha do tempo, saltos de 10 segundos, volume, velocidade, ajuste de imagem, tela cheia, bloqueio de toques e progresso persistente. Capítulos/episódios têm navegação anterior/próximo quando a lista está disponível.
+
+Os players públicos incorporados das fontes são carregados em WebView, com seleção de servidor e tela cheia. Quando há um elemento HTML video acessível, o app acrescenta controles e salva posição; legendas aparecem quando a fonte fornece faixas. Players em iframes de outra origem podem impedir os controles adicionais e retomada; nesses casos permanecem os controles do próprio fornecedor. Qualidade, áudio e legendas dependem do que a fonte disponibiliza. O navegador só é aberto por escolha explícita no menu.
+
+A aba Categorias organiza por tipo, gênero/categoria informada pela fonte e título. Metadados e capas são coletados com três requisições simultâneas no máximo e armazenados em cache diário. Capas são exibidas quando publicadas; gêneros ausentes ficam identificados como Sem gênero informado. Não são inferidos por título. O início é separado em seções de filmes, séries, novelas e reality shows.
 
 Xonados usa seis identificadores confirmados (1–6). IDs 7 e 8 não são rotulados sem
 evidência. Mudanças de nomes/identificadores exigem revisão do conector.
@@ -39,7 +41,7 @@ Nenhuma licença de conteúdo é presumida; integração nativa exige permissão
 
 Identificador permanente: `com.bichocutela.cineshow`.
 Flutter fixado em 3.35.7 para geração reproduzível do projeto Android.
-Versão inicial: `0.2.0+2`. Versão atual: `0.2.1+3`; aumente o versionCode em cada release.
+Versão inicial: `0.2.0+2`. Versão atual: `0.2.2+4`; aumente o versionCode em cada release.
 Nunca troque applicationId nem chave de assinatura. Instalação por cima preserva os
 dados locais quando assinatura e id são iguais e o versionCode aumenta.
 
