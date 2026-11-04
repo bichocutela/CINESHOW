@@ -71,7 +71,7 @@ void main() {
         return http.Response('\u0000\u0000\u0000\u0018ftypisom', 206,
             headers: {'content-type': 'video/mp4'});
       }
-      if (request.url.path == '/' && !selected) {
+      if ((request.url.path.isEmpty || request.url.path == '/') && !selected) {
         return http.Response('XONADOS', 200, headers: {
           'set-cookie': 'PHPSESSID=public-session; Path=/; Secure'
         });
