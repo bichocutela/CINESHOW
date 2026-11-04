@@ -123,11 +123,12 @@ jobs:
           generate_release_notes: true
           body: |
             Atualização oficial com a mesma assinatura permanente e o mesmo pacote Android.
-            - Player de TV ao vivo com suporte ampliado a MPEG-TS direto, HLS e formatos de áudio/vídeo.
-            - Tentativa automática das fontes alternativas do mesmo canal.
-            - Modo compatível para falhas de decodificação ou tela preta.
-            - Diagnóstico de erro para fontes indisponíveis ou com acesso recusado.
-            - Mantém a assinatura permanente e a atualização dentro do app.
+            - Barra de tempo, voltar ao início e retroceder/avançar 10 segundos no player nativo.
+            - Controles que somem automaticamente e reaparecem ao toque, em tela normal e cheia.
+            - Busca em transmissões ao vivo quando a fonte oferece DVR.
+            - Recuperação de capas com alternativas de imagem e atualização dos domínios das fontes.
+            - Compatibilidade de sessões e tela cheia dos players incorporados no Android.
+            - Mantém as melhorias de canais, a assinatura permanente e a atualização dentro do app.
             A disponibilidade das transmissões e a compatibilidade dos players de terceiros dependem de cada fonte.
             Na versão 0.2.1, abra Sobre e verifique a atualização para baixar pelo próprio CINESHOW.
     permissions:

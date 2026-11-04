@@ -4,6 +4,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import '../../core/services/iptv_catalog.dart';
 import '../../core/services/live_playback.dart';
+import 'live_video_controls.dart';
 
 class LivePlayerPage extends StatefulWidget {
   const LivePlayerPage({super.key, required this.channel, this.selected = 0});
@@ -197,7 +198,10 @@ class _LivePlayerPageState extends State<LivePlayerPage>
         Expanded(
             child: Stack(alignment: Alignment.center, children: [
           if (video != null)
-            Video(key: ValueKey(generation), controller: video!),
+            Video(
+                key: ValueKey(generation),
+                controller: video!,
+                controls: (state) => LiveVideoControls(videoState: state)),
           if (loading) const Center(child: CircularProgressIndicator()),
           if (error != null)
             ColoredBox(

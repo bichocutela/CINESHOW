@@ -1,4 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 /// Keeps the provider's original page and player inside the app.
@@ -13,6 +17,8 @@ class _SourcePageState extends State<SourcePage> {
   late final WebViewController controller;
   int progress = 0;
   bool failed = false;
+  Widget? fullscreenView;
+  VoidCallback? hideFullscreen;
   @override
   void initState() {
     super.initState();
@@ -38,8 +44,63 @@ class _SourcePageState extends State<SourcePage> {
                 : NavigationDecision.prevent;
           },
         ),
-      )
-      ..loadRequest(Uri.parse(widget.url));
+      );
+    unawaited(_configure());
+  }
+
+  Future<void> _configure() async {
+    try {
+      final android = controller.platform;
+      if (android is AndroidWebViewController) {
+        final cookies = WebViewCookieManager().platform;
+        if (cookies is AndroidWebViewCookieManager) {
+          await cookies.setAcceptThirdPartyCookies(android, true);
+        }
+        await android.setCustomWidgetCallbacks(
+            onShowCustomWidget: (view, onHidden) {
+          if (!mounted) {
+            onHidden();
+            return;
+          }
+          setState(() {
+            fullscreenView = view;
+            hideFullscreen = onHidden;
+          });
+          unawaited(SystemChrome.setEnabledSystemUIMode(
+              SystemUiMode.immersiveSticky));
+        }, onHideCustomWidget: () {
+          if (mounted)
+            setState(() {
+              fullscreenView = null;
+              hideFullscreen = null;
+            });
+          unawaited(
+              SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
+        });
+      }
+      if (mounted) await controller.loadRequest(Uri.parse(widget.url));
+    } catch (_) {
+      if (mounted) setState(() => failed = true);
+    }
+  }
+
+  Future<void> _external() async {
+    try {
+      await launchUrl(Uri.parse(widget.url),
+          mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Não foi possível abrir a fonte.')));
+    }
+  }
+
+  @override
+  void dispose() {
+    hideFullscreen?.call();
+    if (fullscreenView != null)
+      unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
+    super.dispose();
   }
 
   Future<void> _back() async {
@@ -51,43 +112,56 @@ class _SourcePageState extends State<SourcePage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            tooltip: 'Voltar',
-            onPressed: _back,
-            icon: const Icon(Icons.arrow_back),
-          ),
-          title: Text(widget.title),
-          actions: [
-            IconButton(
-              tooltip: 'Recarregar',
-              onPressed: () => controller.reload(),
-              icon: const Icon(Icons.refresh),
-            ),
-          ],
-        ),
-        body: Column(
-          children: [
-            if (progress < 100 && !failed)
-              LinearProgressIndicator(value: progress / 100),
-            if (failed)
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    const Text(
-                      'A fonte não carregou. Tente novamente ou abra na fonte pela tela de detalhes.',
-                    ),
-                    TextButton(
-                      onPressed: () => controller.reload(),
-                      child: const Text('Tentar novamente'),
-                    ),
-                  ],
+  Widget build(BuildContext context) => PopScope(
+      canPop: fullscreenView == null,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) hideFullscreen?.call();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        appBar: fullscreenView != null
+            ? null
+            : AppBar(
+                leading: IconButton(
+                  tooltip: 'Voltar',
+                  onPressed: _back,
+                  icon: const Icon(Icons.arrow_back),
                 ),
+                title: Text(widget.title),
+                actions: [
+                  IconButton(
+                      tooltip: 'Abrir na fonte',
+                      onPressed: _external,
+                      icon: const Icon(Icons.open_in_new)),
+                  IconButton(
+                    tooltip: 'Recarregar',
+                    onPressed: () => controller.reload(),
+                    icon: const Icon(Icons.refresh),
+                  ),
+                ],
               ),
-            Expanded(child: WebViewWidget(controller: controller)),
-          ],
-        ),
-      );
+        body: fullscreenView ??
+            Column(
+              children: [
+                if (progress < 100 && !failed)
+                  LinearProgressIndicator(value: progress / 100),
+                if (failed)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'A fonte não carregou. Se o site exigir uma etapa no player original, abra na fonte.',
+                        ),
+                        TextButton(
+                          onPressed: () => controller.reload(),
+                          child: const Text('Tentar novamente'),
+                        ),
+                      ],
+                    ),
+                  ),
+                Expanded(child: WebViewWidget(controller: controller)),
+              ],
+            ),
+      ));
 }

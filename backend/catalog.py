@@ -8,9 +8,28 @@ import subprocess
 import tempfile
 import unicodedata
 from dataclasses import dataclass, asdict
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import urlencode, urlsplit, urljoin
 
-ORIGINS = {'rtfilmes': 'https://rtfilmes.com', 'tontons': 'https://tontonsfilmeurs.com', 'xonados': 'https://www.xonados.com'}
+ORIGINS = {'rtfilmes': 'https://casasdefilmes.com', 'tontons': 'https://filmevdeizle.com', 'xonados': 'https://www.xonados.com'}
+SOURCE_ALIASES = {'rtfilmes.com': 'rtfilmes', 'www.rtfilmes.com': 'rtfilmes', 'filme-cinema.com': 'rtfilmes', 'www.filme-cinema.com': 'rtfilmes', 'casasdefilmes.com': 'rtfilmes', 'tontonsfilmeurs.com': 'tontons', 'www.tontonsfilmeurs.com': 'tontons', 'filmevdeizle.com': 'tontons'}
+
+def canonical_source_url(url):
+    parsed = urlsplit(url)
+    provider = SOURCE_ALIASES.get(parsed.hostname)
+    if parsed.scheme not in ('http', 'https') or provider is None:
+        return url
+    origin = urlsplit(ORIGINS[provider])
+    return parsed._replace(scheme=origin.scheme, netloc=origin.netloc).geturl()
+
+def poster_url(attributes, origin):
+    for key in ('data-src', 'data-lazy-src', 'data-original', 'src'):
+        value = attributes.get(key)
+        if value and not value.startswith('data:'):
+            url = urljoin(origin, value)
+            if urlsplit(url).scheme in ('http', 'https'):
+                return url
+    return None
+
 SHOWS = {1: ('Além do Tempo', None), 2: ('Avenida Brasil', 'avenida-brasil-1'), 3: ('A Nobreza do Amor', 'a-nobreza-do-amor'), 4: ('Por Você', 'por-voce'), 5: ('Quem Ama Cuida', 'quem-ama-cuida'), 6: ('A Fazenda 18', 'a-fazenda-18')}
 
 def normalized(text):
@@ -30,7 +49,7 @@ class Transport:
     def close(self):
         self.tmp.cleanup()
     def request(self, path, body=None):
-        url = path if path.startswith('https://') else self.origin + path
+        url = canonical_source_url(path if path.startswith('https://') else self.origin + path)
         if urlsplit(url).netloc != urlsplit(self.origin).netloc:
             raise ValueError('Adapter requests must remain on their configured origin')
         cmd = ['curl', '--fail', '--silent', '--show-error', '--location', '--max-redirs', '3', '--max-time', '20', '--max-filesize', '3000000', '--cookie', self.jar, '--cookie-jar', self.jar, '--user-agent', 'CINESHOW-Catalog/0.1']
@@ -69,7 +88,7 @@ def parse_cards(markup, provider, origin):
         image = attrs(images[0]) if images else {}
         date_match = re.search(r'<span[^>]*>(.*?)</span>', block, re.S)
         years = re.findall(r'\b(?:19|20)\d{2}\b', text(date_match.group(1)) if date_match else '')
-        item = Source(provider, match.group(1), link, title, 'series' if '/serie/' in link else 'movie', int(years[-1]) if years else 0, image.get('data-src') or image.get('src'))
+        item = Source(provider, match.group(1), link, title, 'series' if '/serie/' in link else 'movie', int(years[-1]) if years else 0, poster_url(image, origin))
         result[item.source_id] = item
     return list(result.values())
 

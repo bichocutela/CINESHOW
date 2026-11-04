@@ -62,3 +62,36 @@ resposta de rede e formato; não comprova reprodução no Android nem reproduz
 exatamente o teste externo do usuário. Não foram alterados certificados,
 credenciais ou controles de acesso. Ainda é necessário testar a mesma fonte no
 mesmo aparelho e rede para confirmar o caso específico reportado.
+
+## Controles, capas e fontes (0.3.2)
+
+O player nativo compartilha controles com barra de busca, prévia do tempo durante
+arraste, início, retrocesso/avanço de 10 segundos e tela cheia. Os controles somem
+após três segundos de reprodução e voltam ao toque, inclusive em tela cheia.
+Durante pausa e arraste permanecem acessíveis. A TV ao vivo só oferece a barra
+quando o backend informa que a fonte aceita busca e fornece duração positiva;
+transmissões sem DVR continuam ao vivo. O CINESHOW não grava retroativamente uma
+programação que a origem não oferece. Players dentro de páginas WebView mantêm
+os próprios controles do provedor; o app permite a apresentação HTML5 em tela
+cheia no Android e preserva sessões de iframes com cookies de terceiros.
+
+O catálogo embarcado tinha 93 de 99 itens com poster_url, em sua maioria nos
+antigos domínios das fontes. As URLs testadas responderam 403; o mesmo arquivo de
+arte 62vtHEyzKhFRuEOLLiQfPi60mSs.jpg respondeu 200 no CDN de imagens TMDB. Para
+nomes de arquivo compatíveis, o app tenta o mesmo identificador de arte no CDN,
+depois o domínio atual e a URL original. Não há correspondência por título nem
+substituição por imagem genérica de outro filme. Capas alternativas por fonte
+sobrevivem ao cache; atributos lazy e imagens relativas também são aceitos.
+
+Os destinos observados dos antigos domínios foram casasdefilmes.com (Pobreflix)
+e filmevdeizle.com (TopFlix). A migração usa uma lista explícita de aliases;
+domínios desconhecidos não são convertidos. Catálogo e páginas continuam sujeitos
+à disponibilidade desses terceiros e às mudanças frequentes de endereço.
+
+RedeCanais foi analisado em redecanais.by: a página de um título expõe iframe e
+código de incorporação embed.php?vid=..., com player carregado via JavaScript.
+Isso permite avaliar incorporação, mas não fornece garantia de ausência de
+anúncios nem comprova uma API de reprodução direta. Não foi adicionado ao catálogo
+como fonte supostamente livre de anúncios. Não foram alterados bloqueios de
+acesso ou sequências exigidas pelo provedor. O app não pode oferecer controles
+nativos sobre um iframe que não fornece integração para isso.

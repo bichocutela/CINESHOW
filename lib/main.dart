@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'core/models/media_item.dart';
+import 'core/services/poster_sources.dart';
 import 'features/live/live_page.dart';
 import 'features/player/presentation/player_page.dart';
 import 'features/player/presentation/source_page.dart';
@@ -237,16 +238,19 @@ class Cover extends StatelessWidget {
                 item.kind == 'novela' ? Icons.live_tv : Icons.movie_outlined,
                 size: 48,
                 color: Colors.white38)));
+    final candidates = posterSources(item);
+    Widget imageAt(int index) {
+      if (index >= candidates.length) return placeholder;
+      return Image.network(candidates[index],
+          fit: BoxFit.cover,
+          cacheWidth: 360,
+          errorBuilder: (_, error, stack) => imageAt(index + 1),
+          loadingBuilder: (_, child, progress) =>
+              progress == null ? child : placeholder);
+    }
+
     return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: item.posterUrl == null
-            ? placeholder
-            : Image.network(item.posterUrl!,
-                fit: BoxFit.cover,
-                cacheWidth: 360,
-                errorBuilder: (_, error, stack) => placeholder,
-                loadingBuilder: (_, child, progress) =>
-                    progress == null ? child : placeholder));
+        borderRadius: BorderRadius.circular(12), child: imageAt(0));
   }
 }
 

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../../../core/models/media_item.dart';
 import '../../../core/services/playback_gateway.dart';
+import '../widgets/playback_controls.dart';
 
 class PlayerPage extends StatefulWidget {
   const PlayerPage({super.key, required this.media, this.playbackGateway});
@@ -179,92 +180,29 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                       )
                     : c == null
                         ? const SizedBox.shrink()
-                        : Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                child: Center(
-                                  child: AspectRatio(
-                                    aspectRatio: c.value.aspectRatio > 0
-                                        ? c.value.aspectRatio
-                                        : 16 / 9,
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        VideoPlayer(c),
-                                        if (c.value.isBuffering)
-                                          const CircularProgressIndicator(),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              if (!live)
-                                VideoProgressIndicator(
-                                  c,
-                                  allowScrubbing: true,
-                                  padding: const EdgeInsets.all(12),
-                                ),
-                              Row(
-                                children: [
-                                  IconButton(
-                                    tooltip: c.value.isPlaying
-                                        ? 'Pausar'
-                                        : 'Reproduzir',
-                                    onPressed: () => c.value.isPlaying
-                                        ? c.pause()
-                                        : c.play(),
-                                    icon: Icon(
-                                      c.value.isPlaying
-                                          ? Icons.pause
-                                          : Icons.play_arrow,
-                                    ),
-                                  ),
-                                  if (!live)
-                                    IconButton(
-                                      tooltip: 'Avançar 10 segundos',
-                                      onPressed: () {
-                                        final target = c.value.position +
-                                            const Duration(seconds: 10);
-                                        c.seekTo(
-                                          target > c.value.duration
-                                              ? c.value.duration
-                                              : target,
-                                        );
-                                      },
-                                      icon: const Icon(Icons.forward_10),
-                                    ),
-                                  Expanded(
-                                    child: Text(
-                                      live
-                                          ? '● AO VIVO'
-                                          : '${_time(c.value.position)} / ${_time(c.value.duration)}',
-                                      style: TextStyle(
-                                        color: live
-                                            ? Colors.redAccent
-                                            : Colors.white70,
-                                      ),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    tooltip: 'Tela cheia',
-                                    onPressed: _fullscreen,
-                                    icon: Icon(
-                                      fullscreen
-                                          ? Icons.fullscreen_exit
-                                          : Icons.fullscreen,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                        : PlaybackControls(
+                            position: c.value.position,
+                            duration: c.value.duration,
+                            playing: c.value.isPlaying,
+                            buffering: c.value.isBuffering,
+                            fullscreen: fullscreen,
+                            live: live,
+                            seekable: !live,
+                            onToggle: () =>
+                                c.value.isPlaying ? c.pause() : c.play(),
+                            onSeek: c.seekTo,
+                            onFullscreen: _fullscreen,
+                            child: Center(
+                                child: AspectRatio(
+                              aspectRatio: c.value.aspectRatio > 0
+                                  ? c.value.aspectRatio
+                                  : 16 / 9,
+                              child: VideoPlayer(c),
+                            )),
                           ),
           ),
         ),
       ),
     );
   }
-
-  String _time(Duration d) =>
-      '${d.inMinutes.toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
 }

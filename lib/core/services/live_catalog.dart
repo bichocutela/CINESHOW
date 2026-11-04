@@ -3,13 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/media_item.dart';
+import 'poster_sources.dart';
+import 'source_origins.dart';
+export 'source_origins.dart' show origins;
 
 const apiBase = String.fromEnvironment('CINESHOW_API_URL');
-const origins = {
-  'rtfilmes': 'https://rtfilmes.com',
-  'tontons': 'https://tontonsfilmeurs.com',
-  'xonados': 'https://www.xonados.com'
-};
+
 String plain(String s) => s
     .replaceAll(RegExp('<[^>]+>'), '')
     .replaceAll('&amp;', '&')
@@ -27,7 +26,8 @@ class SourceSession {
   final _client = http.Client();
   final Map<String, String> _cookies = {};
   Future<String> get(String path, {String? body}) async {
-    final uri = Uri.parse(path.startsWith('https://') ? path : '$origin$path');
+    final uri = Uri.parse(canonicalSourceUrl(
+        path.startsWith('https://') ? path : '$origin$path'));
     if (uri.origin != origin) throw StateError('Origem inválida');
     final headers = <String, String>{
       if (_cookies.isNotEmpty)
@@ -165,11 +165,15 @@ class LiveCatalog {
           genre: '',
           year: years.isEmpty ? 0 : int.parse(years.last[0]!),
           durationMinutes: 0,
-          posterUrl: ia['data-src'] ?? ia['src'],
+          posterUrl: catalogPoster(ia, origins[provider]!),
           kind: kind,
           isSeries: kind == 'series',
           sources: [
-            MediaSource(provider: provider, sourceId: id, pageUrl: link)
+            MediaSource(
+                provider: provider,
+                sourceId: id,
+                pageUrl: link,
+                posterUrl: catalogPoster(ia, origins[provider]!))
           ]));
     }
     if (result.isEmpty) throw StateError('Catálogo vazio');
@@ -206,7 +210,10 @@ class LiveCatalog {
           isSeries: kind == 'series',
           sources: [
             MediaSource(
-                provider: provider, sourceId: e.key.toString(), pageUrl: link)
+                provider: provider,
+                sourceId: e.key.toString(),
+                pageUrl: link,
+                posterUrl: j['img'] as String?)
           ]);
     }).toList();
   }

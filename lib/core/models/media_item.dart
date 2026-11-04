@@ -1,13 +1,24 @@
+import '../services/source_origins.dart';
+
 class MediaSource {
   const MediaSource(
-      {required this.provider, required this.sourceId, required this.pageUrl});
+      {required this.provider,
+      required this.sourceId,
+      required this.pageUrl,
+      this.posterUrl});
   final String provider, sourceId, pageUrl;
+  final String? posterUrl;
   factory MediaSource.fromJson(Map<String, dynamic> j) => MediaSource(
       provider: j['provider'] as String,
       sourceId: j['source_id'].toString(),
-      pageUrl: j['page_url'] as String);
-  Map<String, dynamic> toJson() =>
-      {'provider': provider, 'source_id': sourceId, 'page_url': pageUrl};
+      pageUrl: canonicalSourceUrl(j['page_url'] as String),
+      posterUrl: j['poster_url'] as String?);
+  Map<String, dynamic> toJson() => {
+        'provider': provider,
+        'source_id': sourceId,
+        'page_url': pageUrl,
+        'poster_url': posterUrl
+      };
   String get label => switch (provider) {
         'rtfilmes' => 'Pobreflix',
         'tontons' => 'TopFlix',
