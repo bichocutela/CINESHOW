@@ -33,7 +33,9 @@ class _SourcePageState extends State<SourcePage> {
           },
           onPageStarted: (url) {
             if (!navigation.allows(url, isMainFrame: true)) {
-              unawaited(controller.stopLoading());
+              unawaited(controller
+                  .runJavaScript('window.stop();')
+                  .catchError((Object _) {}));
               if (mounted) setState(() => failed = true);
               return;
             }
