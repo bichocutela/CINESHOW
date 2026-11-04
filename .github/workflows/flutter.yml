@@ -15,6 +15,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Determine official release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, os, re, urllib.request, urllib.error
+          from pathlib import Path
+          version = re.search(r'^version:\s*(\S+)', Path('pubspec.yaml').read_text(), re.M).group(1).split('+')[0]
+          tag = 'v' + version
+          ref = os.environ['GITHUB_REF']
+          publish = ref.startswith('refs/tags/v')
+          if publish and ref != 'refs/tags/' + tag:
+              raise SystemExit('Tag must match pubspec version')
+          if ref == 'refs/heads/main' and os.environ['GITHUB_EVENT_NAME'] == 'push':
+              request = urllib.request.Request(
+                  'https://api.github.com/repos/' + os.environ['GITHUB_REPOSITORY'] + '/releases/latest',
+                  headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json'})
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      latest = json.load(response)['tag_name']
+              except urllib.error.HTTPError as error:
+                  if error.code != 404:
+                      raise
+                  latest = 'v0.0.0'
+              parts = lambda value: tuple(map(int, value.removeprefix('v').split('.')))
+              publish = parts(tag) > parts(latest)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('tag=' + tag + '\n')
+              output.write('publish=' + str(publish).lower() + '\n')
+          PY
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -34,7 +65,7 @@ jobs:
       - run: flutter test
       - run: python -m unittest discover -s tests -v
       - name: Configure permanent release signature
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.release.outputs.publish == 'true'
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
@@ -50,12 +81,12 @@ jobs:
           Path('android/key.properties').write_text('\n'.join(k+'='+v for k,v in values.items()))
           PY
       - name: Build validation APK
-        if: "!startsWith(github.ref, 'refs/tags/v')"
+        if: steps.release.outputs.publish != 'true'
         run: flutter build apk --debug
       - name: Check version and build release APK
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.release.outputs.publish == 'true'
         env:
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ steps.release.outputs.tag }}
           API_URL: ${{ vars.CINESHOW_API_URL }}
         run: |
           python - <<'PY'
@@ -78,12 +109,25 @@ jobs:
             test/
           retention-days: 14
       - name: Publish installable release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.release.outputs.publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
           files: |
             CINESHOW-*.apk
             SHA256SUMS.txt
+          tag_name: ${{ steps.release.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: CINESHOW ${{ steps.release.outputs.tag }}
+          draft: false
+          prerelease: false
           generate_release_notes: true
+          body: |
+            Atualização oficial com a mesma assinatura permanente e o mesmo pacote Android.
+            - Nova aba Ao Vivo: canais do Brasil e do mundo, busca, categorias, favoritos e seleção de fontes.
+            - Player interno para transmissões, com controles e tela cheia.
+            - Filmes e episódios com opção de abrir o player original da fonte dentro do app.
+            - Conteúdos com link direto configurado usam o player Flutter com progresso salvo.
+            A disponibilidade das transmissões e a compatibilidade dos players de terceiros dependem de cada fonte.
+            Na versão 0.2.1, abra Sobre e verifique a atualização para baixar pelo próprio CINESHOW.
     permissions:
       contents: write
