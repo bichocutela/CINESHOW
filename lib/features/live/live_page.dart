@@ -135,156 +135,158 @@ class _LivePageState extends State<LivePage> {
               c.name.toLowerCase().contains(query.toLowerCase().trim()),
         )
         .toList();
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'AO VIVO',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-              ),
-              IconButton(
-                onPressed: refreshing ? null : _refresh,
-                tooltip: 'Atualizar canais',
-                icon: const Icon(Icons.refresh),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: TextField(
-            onChanged: (v) => setState(() => query = v),
-            decoration: const InputDecoration(
-              hintText: 'Buscar canal',
-              prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              DropdownButton<String>(
-                value: country,
-                items: [
-                  const DropdownMenuItem(
-                    value: '',
-                    child: Text('Todos os países'),
-                  ),
-                  for (final c in {...countries, 'BR'}.toList()..sort())
-                    DropdownMenuItem(
-                      value: c,
-                      child: Text(c == 'BR' ? 'Brasil' : c),
-                    ),
-                ],
-                onChanged: (v) => setState(() => country = v ?? ''),
-              ),
-              DropdownButton<String>(
-                value: category,
-                items: [
-                  const DropdownMenuItem(
-                    value: '',
-                    child: Text('Todas as categorias'),
-                  ),
-                  for (final c in {
-                    ...categories,
-                    if (category.isNotEmpty) category,
-                  }.toList()
-                    ..sort())
-                    DropdownMenuItem(
-                      value: c,
-                      child: Text(categoryNames[c] ?? c),
-                    ),
-                ],
-                onChanged: (v) => setState(() => category = v ?? ''),
-              ),
-              FilterChip(
-                label: const Text('Favoritos'),
-                selected: onlyFavorites,
-                onSelected: (v) => setState(() => onlyFavorites = v),
-              ),
-            ],
-          ),
-        ),
-        if (refreshing) const LinearProgressIndicator(),
-        if (error != null)
-          Padding(padding: const EdgeInsets.all(12), child: Text(error!)),
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: Text('${visible.length} canais · Fonte: iptv-org'),
-        ),
-        Expanded(
-          child: loading
-              ? const Center(child: CircularProgressIndicator())
-              : visible.isEmpty
-                  ? const Center(child: Text('Nenhum canal com estes filtros.'))
-                  : RefreshIndicator(
-                      onRefresh: _refresh,
-                      child: ListView.builder(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        itemCount: visible.length,
-                        itemBuilder: (context, index) {
-                          final c = visible[index];
-                          return ListTile(
-                            leading: SizedBox(
-                              width: 56,
-                              height: 44,
-                              child: c.logo == null
-                                  ? const Icon(Icons.live_tv)
-                                  : Image.network(
-                                      c.logo!,
-                                      fit: BoxFit.contain,
-                                      cacheWidth: 160,
-                                      errorBuilder: (_, e, s) =>
-                                          const Icon(Icons.live_tv),
-                                    ),
-                            ),
-                            title: Text(c.name),
-                            subtitle: Text(
-                              '${c.country} · ${c.categories.map((v) => categoryNames[v] ?? v).join(', ')}',
-                            ),
-                            onTap: () => _play(c, 0),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  tooltip: 'Favoritar canal',
-                                  onPressed: () => _favorite(c),
-                                  icon: Icon(
-                                    favorites.contains(c.id)
-                                        ? Icons.star
-                                        : Icons.star_border,
-                                  ),
-                                ),
-                                PopupMenuButton<int>(
-                                  tooltip: 'Fontes de transmissão',
-                                  onSelected: (i) => _play(c, i),
-                                  itemBuilder: (_) => [
-                                    for (var i = 0; i < c.streams.length; i++)
-                                      PopupMenuItem(
-                                        value: i,
-                                        child: Text(
-                                          'Fonte ${i + 1} · ${c.streams[i]['quality'] ?? ''} ${((c.streams[i]['labels'] as List?) ?? []).join(', ')}',
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: loading || visible.isEmpty ? 2 : visible.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Column(children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'AO VIVO',
+                        style: TextStyle(
+                            fontSize: 24, fontWeight: FontWeight.bold),
                       ),
                     ),
-        ),
-      ],
+                    IconButton(
+                      onPressed: refreshing ? null : _refresh,
+                      tooltip: 'Atualizar canais',
+                      icon: const Icon(Icons.refresh),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: TextField(
+                  onChanged: (v) => setState(() => query = v),
+                  decoration: const InputDecoration(
+                    hintText: 'Buscar canal',
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    DropdownButton<String>(
+                      value: country,
+                      items: [
+                        const DropdownMenuItem(
+                          value: '',
+                          child: Text('Todos os países'),
+                        ),
+                        for (final c in {...countries, 'BR'}.toList()..sort())
+                          DropdownMenuItem(
+                            value: c,
+                            child: Text(c == 'BR' ? 'Brasil' : c),
+                          ),
+                      ],
+                      onChanged: (v) => setState(() => country = v ?? ''),
+                    ),
+                    DropdownButton<String>(
+                      value: category,
+                      items: [
+                        const DropdownMenuItem(
+                          value: '',
+                          child: Text('Todas as categorias'),
+                        ),
+                        for (final c in {
+                          ...categories,
+                          if (category.isNotEmpty) category,
+                        }.toList()
+                          ..sort())
+                          DropdownMenuItem(
+                            value: c,
+                            child: Text(categoryNames[c] ?? c),
+                          ),
+                      ],
+                      onChanged: (v) => setState(() => category = v ?? ''),
+                    ),
+                    FilterChip(
+                      label: const Text('Favoritos'),
+                      selected: onlyFavorites,
+                      onSelected: (v) => setState(() => onlyFavorites = v),
+                    ),
+                  ],
+                ),
+              ),
+              if (refreshing) const LinearProgressIndicator(),
+              if (error != null)
+                Padding(padding: const EdgeInsets.all(12), child: Text(error!)),
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: Text('${visible.length} canais · Fonte: iptv-org'),
+              ),
+            ]);
+          }
+          if (loading) {
+            return const Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(child: CircularProgressIndicator()));
+          }
+          if (visible.isEmpty) {
+            return const Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(child: Text('Nenhum canal com estes filtros.')));
+          }
+          final c = visible[index - 1];
+          return ListTile(
+            leading: SizedBox(
+              width: 56,
+              height: 44,
+              child: c.logo == null
+                  ? const Icon(Icons.live_tv)
+                  : Image.network(
+                      c.logo!,
+                      fit: BoxFit.contain,
+                      cacheWidth: 160,
+                      errorBuilder: (_, e, s) => const Icon(Icons.live_tv),
+                    ),
+            ),
+            title: Text(c.name),
+            subtitle: Text(
+              '${c.country} · ${c.categories.map((v) => categoryNames[v] ?? v).join(', ')}',
+            ),
+            onTap: () => _play(c, 0),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Favoritar canal',
+                  onPressed: () => _favorite(c),
+                  icon: Icon(
+                    favorites.contains(c.id) ? Icons.star : Icons.star_border,
+                  ),
+                ),
+                PopupMenuButton<int>(
+                  tooltip: 'Fontes de transmissão',
+                  onSelected: (i) => _play(c, i),
+                  itemBuilder: (_) => [
+                    for (var i = 0; i < c.streams.length; i++)
+                      PopupMenuItem(
+                        value: i,
+                        child: Text(
+                          'Fonte ${i + 1} · ${c.streams[i]['quality'] ?? ''} ${((c.streams[i]['labels'] as List?) ?? []).join(', ')}',
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
