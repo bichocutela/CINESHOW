@@ -123,11 +123,11 @@ jobs:
           generate_release_notes: true
           body: |
             Atualização oficial com a mesma assinatura permanente e o mesmo pacote Android.
-            - Corrige o redirecionamento que substituía a página do filme por uma página externa.
-            - Mantém o player incorporado na fonte e restringe desvios da página principal.
-            - Tentar novamente e recarregar voltam à última página permitida da fonte.
-            - Melhora a apresentação de falhas sem exibir a página de erro interna do Android.
-            - Mantém as melhorias de canais, controles, capas e a assinatura permanente.
+            - Xonados: localiza o vídeo do capítulo em uma sessão nova e abre mídia validada no player nativo.
+            - Filmes: consulta os players pela API DooPlay, sem abrir a página completa do agregador.
+            - Seleção de players retornados pela fonte e incorporação em uma página mínima de iframe.
+            - Diferencia vídeo direto de player externo, que pode exigir anúncios ou verificação do provedor.
+            - Atualiza as origens observadas das fontes e mantém assinatura e atualização dentro do app.
             A disponibilidade das transmissões e a compatibilidade dos players de terceiros dependem de cada fonte.
             Na versão 0.2.1, abra Sobre e verifique a atualização para baixar pelo próprio CINESHOW.
     permissions:

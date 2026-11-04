@@ -22,7 +22,7 @@ void main() {
     expect(
         sources,
         contains(
-            'https://casasdefilmes.com/wp-content/uploads/2026/10/62vtHEyzKhFRuEOLLiQfPi60mSs-185x278.jpg'));
+            'https://filmesamadoresgratis.com/wp-content/uploads/2026/10/62vtHEyzKhFRuEOLLiQfPi60mSs-185x278.jpg'));
   });
   test('does not guess a TMDB ID from arbitrary images', () {
     const item = MediaItem(
@@ -51,7 +51,7 @@ void main() {
       'poster_url': 'https://example.org/cover.jpg'
     });
     final restored = MediaSource.fromJson(source.toJson());
-    expect(restored.pageUrl, 'https://casasdefilmes.com/filme/a/');
+    expect(restored.pageUrl, 'https://filmesamadoresgratis.com/filme/a/');
     expect(restored.posterUrl, 'https://example.org/cover.jpg');
     expect(canonicalSourceUrl('https://unrelated.example/path'),
         'https://unrelated.example/path');

@@ -1,5 +1,6 @@
 import 'dart:async';
 import '../../../core/services/source_navigation.dart';
+import '../../../core/services/provider_embed.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -8,15 +9,24 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 /// Keeps the provider's original page and player inside the app.
 class SourcePage extends StatefulWidget {
-  const SourcePage({super.key, required this.title, required this.url});
+  const SourcePage(
+      {super.key,
+      required this.title,
+      required this.url,
+      this.headers = const {},
+      this.embedded = false});
   final String title, url;
+  final Map<String, String> headers;
+  final bool embedded;
   @override
   State<SourcePage> createState() => _SourcePageState();
 }
 
 class _SourcePageState extends State<SourcePage> {
   late final WebViewController controller;
-  late final navigation = SourceNavigationPolicy(widget.url);
+  late final navigation = SourceNavigationPolicy(widget.embedded
+      ? providerEmbedBase(widget.url, widget.headers)
+      : widget.url);
   int progress = 0;
   bool failed = false;
   Widget? fullscreenView;
@@ -32,6 +42,7 @@ class _SourcePageState extends State<SourcePage> {
             if (mounted) setState(() => progress = v);
           },
           onPageStarted: (url) {
+            if (widget.embedded && url == 'about:blank') return;
             if (!navigation.allows(url, isMainFrame: true)) {
               unawaited(controller
                   .runJavaScript('window.stop();')
@@ -99,7 +110,13 @@ class _SourcePageState extends State<SourcePage> {
       failed = false;
       progress = 0;
     });
-    await controller.loadRequest(Uri.parse(navigation.retryUrl));
+    if (widget.embedded) {
+      await controller.loadHtmlString(providerEmbedHtml(widget.url),
+          baseUrl: providerEmbedBase(widget.url, widget.headers));
+    } else {
+      await controller.loadRequest(Uri.parse(navigation.retryUrl),
+          headers: widget.headers);
+    }
   }
 
   Future<void> _external() async {

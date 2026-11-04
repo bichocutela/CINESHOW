@@ -10,8 +10,8 @@ import unicodedata
 from dataclasses import dataclass, asdict
 from urllib.parse import urlencode, urlsplit, urljoin
 
-ORIGINS = {'rtfilmes': 'https://casasdefilmes.com', 'tontons': 'https://filmevdeizle.com', 'xonados': 'https://www.xonados.com'}
-SOURCE_ALIASES = {'rtfilmes.com': 'rtfilmes', 'www.rtfilmes.com': 'rtfilmes', 'filme-cinema.com': 'rtfilmes', 'www.filme-cinema.com': 'rtfilmes', 'casasdefilmes.com': 'rtfilmes', 'tontonsfilmeurs.com': 'tontons', 'www.tontonsfilmeurs.com': 'tontons', 'filmevdeizle.com': 'tontons'}
+ORIGINS = {'rtfilmes': 'https://filmesamadoresgratis.com', 'tontons': 'https://filmeonlinebistrita.com', 'xonados': 'https://www.xonados.com'}
+SOURCE_ALIASES = {'filmesamadoresgratis.com': 'rtfilmes', 'www.filmesamadoresgratis.com': 'rtfilmes', 'filmeonlinebistrita.com': 'tontons', 'www.filmeonlinebistrita.com': 'tontons', 'rtfilmes.com': 'rtfilmes', 'www.rtfilmes.com': 'rtfilmes', 'filme-cinema.com': 'rtfilmes', 'www.filme-cinema.com': 'rtfilmes', 'casasdefilmes.com': 'rtfilmes', 'tontonsfilmeurs.com': 'tontons', 'www.tontonsfilmeurs.com': 'tontons', 'filmevdeizle.com': 'tontons'}
 
 def canonical_source_url(url):
     parsed = urlsplit(url)

@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'core/models/media_item.dart';
 import 'core/services/poster_sources.dart';
+import 'core/services/provider_playback.dart';
 import 'features/live/live_page.dart';
 import 'features/player/presentation/player_page.dart';
 import 'features/player/presentation/source_page.dart';
@@ -329,6 +330,9 @@ class _DetailsState extends State<DetailsPage> {
   late MediaSource? selected = widget.item.sources.firstOrNull;
   List<Map<String, dynamic>> episodes = [];
   bool loading = false;
+  bool resolving = false;
+  String? playbackError;
+  ProviderPlaybackResolver? activeResolver;
   String? error;
   @override
   void initState() {
@@ -372,13 +376,69 @@ class _DetailsState extends State<DetailsPage> {
     }
   }
 
-  void _watchSource(String url) {
-    final uri = Uri.tryParse(url);
-    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) return;
-    Navigator.push(
-        context,
-        MaterialPageRoute<void>(
-            builder: (_) => SourcePage(title: widget.item.title, url: url)));
+  Future<void> _watchSource(String url) async {
+    final source = selected;
+    if (resolving || source == null) return;
+    final resolver = ProviderPlaybackResolver();
+    activeResolver = resolver;
+    setState(() {
+      resolving = true;
+      playbackError = null;
+    });
+    try {
+      final options = await resolver
+          .resolve(widget.item, source, pageUrl: url)
+          .timeout(const Duration(seconds: 90));
+      if (!mounted) return;
+      ProviderPlaybackOption? choice;
+      if (options.length == 1) {
+        choice = options.first;
+      } else {
+        choice = await showModalBottomSheet<ProviderPlaybackOption>(
+            context: context,
+            builder: (context) => SafeArea(
+                    child: ListView(shrinkWrap: true, children: [
+                  const ListTile(title: Text('Escolher player disponível')),
+                  for (final option in options)
+                    ListTile(
+                        title: Text(option.label),
+                        subtitle: Text(option.direct
+                            ? 'Vídeo direto no CINESHOW'
+                            : 'Player externo · pode exigir anúncios ou verificação'),
+                        trailing: const Icon(Icons.play_circle_outline),
+                        onTap: () => Navigator.pop(context, option)),
+                ])));
+      }
+      if (choice == null || !mounted) return;
+      final expanded =
+          await resolver.expand(choice).timeout(const Duration(seconds: 45));
+      if (!mounted) return;
+      final playable = expanded.first;
+      Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+              builder: (_) => playable.direct
+                  ? PlayerPage(media: playable.media(widget.item))
+                  : SourcePage(
+                      title: widget.item.title,
+                      url: playable.url,
+                      headers: playable.headers,
+                      embedded: true)));
+    } catch (exception) {
+      if (mounted)
+        setState(() => playbackError =
+            'Não foi possível localizar a reprodução nesta fonte. ${exception is StateError ? exception.message : exception is TimeoutException ? 'A fonte demorou a responder.' : 'A fonte retornou uma resposta incompatível.'}');
+    } finally {
+      resolver.close();
+      if (identical(activeResolver, resolver)) activeResolver = null;
+      if (mounted) setState(() => resolving = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    activeResolver?.close();
+    super.dispose();
   }
 
   @override
@@ -401,7 +461,7 @@ class _DetailsState extends State<DetailsPage> {
             ChoiceChip(
                 label: Text(s.label),
                 selected: s == selected,
-                onSelected: loading
+                onSelected: loading || resolving
                     ? null
                     : (_) {
                         setState(() => selected = s);
@@ -421,9 +481,16 @@ class _DetailsState extends State<DetailsPage> {
               label: const Text('Assistir no CINESHOW')),
         if (widget.item.streamUrl?.isNotEmpty != true && selected != null)
           FilledButton.icon(
-              onPressed: () => _watchSource(selected!.pageUrl),
+              onPressed:
+                  resolving ? null : () => _watchSource(selected!.pageUrl),
               icon: const Icon(Icons.play_arrow),
-              label: const Text('Assistir no app · player da fonte')),
+              label:
+                  Text(resolving ? 'Localizando vídeo...' : 'Assistir no app')),
+        if (resolving) const LinearProgressIndicator(),
+        if (playbackError != null)
+          Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(playbackError!)),
         if (selected != null)
           OutlinedButton.icon(
               onPressed: () => _open(selected!.pageUrl),
@@ -463,8 +530,9 @@ class _DetailsState extends State<DetailsPage> {
                 contentPadding: EdgeInsets.zero,
                 title: Text(e['title'] as String),
                 trailing: const Icon(Icons.play_circle_outline),
-                onTap: () => _watchSource(
-                    (e['page_url'] as String?) ?? selected!.pageUrl))
+                onTap: () => _watchSource((e['page_url'] as String?) ??
+                    (e['player_path'] as String?) ??
+                    selected!.pageUrl))
         ]
       ]));
 }

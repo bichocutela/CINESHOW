@@ -1,9 +1,13 @@
 const origins = {
-  'rtfilmes': 'https://casasdefilmes.com',
-  'tontons': 'https://filmevdeizle.com',
+  'rtfilmes': 'https://filmesamadoresgratis.com',
+  'tontons': 'https://filmeonlinebistrita.com',
   'xonados': 'https://www.xonados.com'
 };
 const sourceHostAliases = {
+  'filmesamadoresgratis.com': 'rtfilmes',
+  'www.filmesamadoresgratis.com': 'rtfilmes',
+  'filmeonlinebistrita.com': 'tontons',
+  'www.filmeonlinebistrita.com': 'tontons',
   'rtfilmes.com': 'rtfilmes',
   'www.rtfilmes.com': 'rtfilmes',
   'filme-cinema.com': 'rtfilmes',
