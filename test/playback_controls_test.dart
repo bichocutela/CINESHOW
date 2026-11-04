@@ -14,7 +14,6 @@ Widget harness(
                 width: 400,
                 height: 240,
                 child: PlaybackControls(
-                  child: const ColoredBox(color: Colors.black),
                   position: const Duration(seconds: 5),
                   duration: duration,
                   playing: playing,
@@ -23,6 +22,7 @@ Widget harness(
                   onToggle: () async {},
                   onSeek: seek ?? (_) async {},
                   onFullscreen: () {},
+                  child: const ColoredBox(color: Colors.black),
                 ))));
 
 void main() {

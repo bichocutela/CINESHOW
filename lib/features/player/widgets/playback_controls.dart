@@ -72,9 +72,10 @@ class _PlaybackControlsState extends State<PlaybackControls> {
     try {
       await widget.onSeek(boundedPlaybackPosition(target, widget.duration));
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(
             content: Text('A fonte não permite ir até esse momento.')));
+      }
     }
     if (!mounted) return;
     setState(() {

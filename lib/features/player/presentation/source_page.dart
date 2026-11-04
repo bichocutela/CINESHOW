@@ -69,11 +69,12 @@ class _SourcePageState extends State<SourcePage> {
           unawaited(SystemChrome.setEnabledSystemUIMode(
               SystemUiMode.immersiveSticky));
         }, onHideCustomWidget: () {
-          if (mounted)
+          if (mounted) {
             setState(() {
               fullscreenView = null;
               hideFullscreen = null;
             });
+          }
           unawaited(
               SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
         });
@@ -89,17 +90,19 @@ class _SourcePageState extends State<SourcePage> {
       await launchUrl(Uri.parse(widget.url),
           mode: LaunchMode.externalApplication);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Não foi possível abrir a fonte.')));
+      }
     }
   }
 
   @override
   void dispose() {
     hideFullscreen?.call();
-    if (fullscreenView != null)
+    if (fullscreenView != null) {
       unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
+    }
     super.dispose();
   }
 

@@ -58,7 +58,6 @@ class _LiveVideoControlsState extends State<LiveVideoControls> {
 
   @override
   Widget build(BuildContext context) => PlaybackControls(
-      child: const SizedBox.expand(),
       position: player.state.position,
       duration: player.state.duration,
       playing: player.state.playing,
@@ -68,5 +67,6 @@ class _LiveVideoControlsState extends State<LiveVideoControls> {
       fullscreen: widget.videoState.isFullscreen(),
       onToggle: player.playOrPause,
       onSeek: player.seek,
-      onFullscreen: widget.videoState.toggleFullscreen);
+      onFullscreen: widget.videoState.toggleFullscreen,
+      child: const SizedBox.expand());
 }
