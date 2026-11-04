@@ -175,8 +175,9 @@ class ProviderPlaybackResolver {
         final url = data['embed_url'] as String?;
         if (data['type'] != 'iframe' || url == null) return null;
         final uri = Uri.tryParse(url);
-        if (uri == null || uri.scheme != 'https' || uri.host.isEmpty)
+        if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
           return null;
+        }
         final label = switch (uri.host) {
           'embed.embedplayer.site' => 'GD',
           'superflixapi.fun' => 'BK',

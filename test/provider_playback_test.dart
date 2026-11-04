@@ -25,8 +25,9 @@ void main() {
         return http.Response('', 301,
             headers: {'location': 'https://current.example/'});
       }
-      if (request.url.path == '/')
+      if (request.url.path == '/') {
         return http.Response('Pobreflix dooplay', 200);
+      }
       if (request.url.path.endsWith('/movie/1')) {
         return http.Response(
             jsonEncode({
@@ -81,15 +82,18 @@ void main() {
         selected = true;
         return http.Response('', 200);
       }
-      if (request.url.path == '/')
+      if (request.url.path == '/') {
         return http.Response(
             '<script src="/ast/YwZ.js?y=fresh"></script>', 200);
-      if (request.url.path == '/ast/YwZ.js')
+      }
+      if (request.url.path == '/ast/YwZ.js') {
         return http.Response("iframe.src = '/ast/FzY?y=fresh&zy=2';", 200);
-      if (request.url.path == '/ast/FzY')
+      }
+      if (request.url.path == '/ast/FzY') {
         return http.Response(
             '<iframe src="/ast/OnW/?zy=2&amp;date=20261103&amp;y=fresh"></iframe>',
             200);
+      }
       if (request.url.path == '/ast/OnW/') {
         expect(request.url.queryParameters['y'], 'fresh');
         return http.Response(
@@ -119,8 +123,9 @@ void main() {
       () async {
     final resolver =
         ProviderPlaybackResolver(client: MockClient((request) async {
-      if (request.method == 'GET')
+      if (request.method == 'GET') {
         return http.Response('<div idS="public-choice"></div>', 200);
+      }
       expect(request.url.path, '/stream');
       expect(request.body, 'idS=public-choice');
       expect(request.headers['X-Requested-With'], 'XMLHttpRequest');

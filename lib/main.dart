@@ -425,9 +425,10 @@ class _DetailsState extends State<DetailsPage> {
                       headers: playable.headers,
                       embedded: true)));
     } catch (exception) {
-      if (mounted)
+      if (mounted) {
         setState(() => playbackError =
             'Não foi possível localizar a reprodução nesta fonte. ${exception is StateError ? exception.message : exception is TimeoutException ? 'A fonte demorou a responder.' : 'A fonte retornou uma resposta incompatível.'}');
+      }
     } finally {
       resolver.close();
       if (identical(activeResolver, resolver)) activeResolver = null;
