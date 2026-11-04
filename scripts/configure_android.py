@@ -25,7 +25,7 @@ s=s.replace('    buildTypes {','''    signingConfigs {
 s=s.replace('signingConfig = signingConfigs.getByName("debug")','signingConfig = signingConfigs.getByName(if (signingFile.exists()) "release" else "debug")')
 s += '\ndependencies { implementation("androidx.core:core:1.13.1") }\n'
 p.write_text(s)
-m=Path('android/app/src/main/AndroidManifest.xml');s=m.read_text();s=s.replace('    <application','    <uses-permission android:name="android.permission.INTERNET" />\n    <application',1);s=s.replace('android:label="cineshow"','android:label="CINESHOW"');m.write_text(s)
+m=Path('android/app/src/main/AndroidManifest.xml');s=m.read_text();s=s.replace('    <application','    <uses-permission android:name="android.permission.INTERNET" />\n    <application',1);s=s.replace('<application', '<application android:usesCleartextTraffic="true"', 1);s=s.replace('android:label="cineshow"','android:label="CINESHOW"');m.write_text(s)
 
 # Keep the official PNG byte-identical; only the Android container adds safe space.
 import shutil
