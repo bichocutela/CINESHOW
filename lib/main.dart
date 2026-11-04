@@ -401,8 +401,9 @@ class _DetailsState extends State<DetailsPage> {
                     ? null
                     : (_) {
                         setState(() => selected = s);
-                        if (widget.item.kind != 'movie' && selected != null)
+                        if (widget.item.kind != 'movie' && selected != null) {
                           _episodes();
+                        }
                       })
         ]),
         const SizedBox(height: 12),
