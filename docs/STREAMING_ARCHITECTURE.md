@@ -39,3 +39,26 @@ o player nativo. Episódios também abrem sua página dentro do app.
 Validação em dispositivo: testar canal brasileiro, troca de fonte, erro de rede,
 pausa ao sair do app, rotação e tela cheia; testar uma página de filme e episódio
 em cada provedor. A compatibilidade dos players de terceiros requer Android real.
+
+## Compatibilidade de canais (0.3.1)
+
+Ao Vivo utiliza media_kit/libmpv para identificar o conteúdo da transmissão,
+incluindo MPEG-TS contínuo em URLs sem extensão, HLS e formatos de áudio/vídeo
+suportados pelas bibliotecas embarcadas. O player de filmes com link direto
+continua separado. O modo compatível desativa a decodificação por hardware.
+
+Ao falhar ou ficar sem progresso, o player tenta as outras fontes do mesmo canal,
+sem misturar afiliadas ou canais. Cada tentativa mantém os cabeçalhos específicos
+daquela fonte. A inicialização tem limite de 35 segundos até a primeira imagem;
+a detecção de interrupção fica suspensa quando o app está em segundo plano ou
+quando a reprodução está pausada. Fontes podem ser selecionadas manualmente.
+Os erros são diferenciados e os detalhes técnicos omitem URLs completas e tokens.
+
+Diagnóstico em 04/11/2026 a partir do ambiente de desenvolvimento: a fonte Morena
+de RedeGlobo.br retornou HTTP 404; outras fontes retornaram HTTP 403. As URLs sem
+extensão de TVGloboBrasilia.br e GloboNews.br responderam HTTP 200, video/mp2t.
+FFprobe identificou H.264 Main 852x480 e AAC-LC na fonte Brasília. Isso comprova
+resposta de rede e formato; não comprova reprodução no Android nem reproduz
+exatamente o teste externo do usuário. Não foram alterados certificados,
+credenciais ou controles de acesso. Ainda é necessário testar a mesma fonte no
+mesmo aparelho e rede para confirmar o caso específico reportado.

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/iptv_catalog.dart';
-import '../player/presentation/player_page.dart';
+import 'live_player_page.dart';
 
 const categoryNames = {
   'undefined': 'Sem categoria',
@@ -107,7 +107,7 @@ class _LivePageState extends State<LivePage> {
   void _play(TvChannel channel, int index) => Navigator.push(
         context,
         MaterialPageRoute<void>(
-          builder: (_) => PlayerPage(media: channel.media(index)),
+          builder: (_) => LivePlayerPage(channel: channel, selected: index),
         ),
       );
   @override
