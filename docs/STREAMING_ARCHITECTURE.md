@@ -95,3 +95,23 @@ anúncios nem comprova uma API de reprodução direta. Não foi adicionado ao ca
 como fonte supostamente livre de anúncios. Não foram alterados bloqueios de
 acesso ou sequências exigidas pelo provedor. O app não pode oferecer controles
 nativos sobre um iframe que não fornece integração para isso.
+
+## Redirecionamentos de página (0.3.3)
+
+A captura enviada pelo usuário mostrou uma navegação principal do filme para
+interlinecustomroofingllc.com, encerrada com ERR_CONNECTION_REFUSED. A WebView
+aceitava qualquer URL HTTP(S) no quadro principal; o botão de nova tentativa
+recarregava a URL atual, inclusive depois de um desvio externo.
+
+A política agora mantém a navegação principal na origem inicial ou em aliases
+explicitamente conhecidos do mesmo provedor. Iframes HTTP(S) de terceiros
+continuam permitidos para preservar o player incorporado; o recurso não é um
+bloqueador universal de anúncios ou de solicitações de mídia. URLs externas não
+se tornam destino de nova tentativa. Recarregar usa a última página permitida.
+Erros da página principal usam a interface do app, sem mostrar a página de erro
+interna do Android WebView. A abertura externa continua uma ação explícita.
+
+Os testes reproduzem o endereço externo da captura, distinguem iframe e quadro
+principal, validam migrações conhecidas e verificam o destino de nova tentativa.
+A validação da reprodução de O Fim da Rua na rede/aparelho do usuário ainda é
+necessária; a correção da navegação não prova que a fonte liberou o vídeo.

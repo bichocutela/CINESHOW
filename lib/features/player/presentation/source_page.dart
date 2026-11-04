@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../../core/services/source_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -15,6 +16,7 @@ class SourcePage extends StatefulWidget {
 
 class _SourcePageState extends State<SourcePage> {
   late final WebViewController controller;
+  late final navigation = SourceNavigationPolicy(widget.url);
   int progress = 0;
   bool failed = false;
   Widget? fullscreenView;
@@ -29,7 +31,12 @@ class _SourcePageState extends State<SourcePage> {
           onProgress: (v) {
             if (mounted) setState(() => progress = v);
           },
-          onPageStarted: (_) {
+          onPageStarted: (url) {
+            if (!navigation.allows(url, isMainFrame: true)) {
+              unawaited(controller.stopLoading());
+              if (mounted) setState(() => failed = true);
+              return;
+            }
             if (mounted) setState(() => failed = false);
           },
           onWebResourceError: (e) {
@@ -38,8 +45,7 @@ class _SourcePageState extends State<SourcePage> {
             }
           },
           onNavigationRequest: (r) {
-            final uri = Uri.tryParse(r.url);
-            return uri != null && ['http', 'https'].contains(uri.scheme)
+            return navigation.allows(r.url, isMainFrame: r.isMainFrame)
                 ? NavigationDecision.navigate
                 : NavigationDecision.prevent;
           },
@@ -79,10 +85,19 @@ class _SourcePageState extends State<SourcePage> {
               SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
         });
       }
-      if (mounted) await controller.loadRequest(Uri.parse(widget.url));
+      if (mounted) await _retry();
     } catch (_) {
       if (mounted) setState(() => failed = true);
     }
+  }
+
+  Future<void> _retry() async {
+    if (!mounted) return;
+    setState(() {
+      failed = false;
+      progress = 0;
+    });
+    await controller.loadRequest(Uri.parse(navigation.retryUrl));
   }
 
   Future<void> _external() async {
@@ -138,7 +153,7 @@ class _SourcePageState extends State<SourcePage> {
                       icon: const Icon(Icons.open_in_new)),
                   IconButton(
                     tooltip: 'Recarregar',
-                    onPressed: () => controller.reload(),
+                    onPressed: _retry,
                     icon: const Icon(Icons.refresh),
                   ),
                 ],
@@ -154,16 +169,19 @@ class _SourcePageState extends State<SourcePage> {
                     child: Column(
                       children: [
                         const Text(
-                          'A fonte não carregou. Se o site exigir uma etapa no player original, abra na fonte.',
+                          'Não foi possível carregar a página do filme. Tente novamente ou escolha outra fonte nos detalhes.',
                         ),
                         TextButton(
-                          onPressed: () => controller.reload(),
+                          onPressed: _retry,
                           child: const Text('Tentar novamente'),
                         ),
                       ],
                     ),
                   ),
-                Expanded(child: WebViewWidget(controller: controller)),
+                Expanded(
+                    child: failed
+                        ? const SizedBox.shrink()
+                        : WebViewWidget(controller: controller)),
               ],
             ),
       ));
