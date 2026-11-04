@@ -93,6 +93,12 @@ class StreamResolver {
       throw StateError(
           'Nenhuma fonte autorizada foi configurada para ${item.title}.');
     }
+    final uri = Uri.tryParse(url);
+    if (uri == null ||
+        !['http', 'https'].contains(uri.scheme) ||
+        uri.host.isEmpty) {
+      throw StateError('Endereço de reprodução inválido.');
+    }
     return url;
   }
 }

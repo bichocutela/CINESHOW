@@ -27,12 +27,14 @@ class MediaItem {
       this.posterUrl,
       this.backdropUrl,
       this.streamUrl,
+      this.streamHeaders = const {},
       this.isSeries = false,
       this.kind = 'movie',
       this.sources = const []});
   final String id, title, description, genre, kind;
   final int year, durationMinutes;
   final String? posterUrl, backdropUrl, streamUrl;
+  final Map<String, String> streamHeaders;
   final bool isSeries;
   final List<MediaSource> sources;
   factory MediaItem.fromJson(Map<String, dynamic> j) => MediaItem(
@@ -42,7 +44,11 @@ class MediaItem {
       description: (j['description'] as String?) ?? '',
       genre: (j['genre'] as String?) ?? '',
       year: (j['year'] as num?)?.toInt() ?? 0,
-      durationMinutes: 0,
+      durationMinutes: (j['duration_minutes'] as num?)?.toInt() ?? 0,
+      streamUrl: j['stream_url'] as String?,
+      streamHeaders:
+          Map<String, String>.from((j['stream_headers'] as Map?) ?? {}),
+      backdropUrl: j['backdrop_url'] as String?,
       posterUrl: j['poster_url'] as String?,
       kind: (j['kind'] as String?) ?? 'movie',
       isSeries: j['kind'] == 'series',
@@ -56,6 +62,10 @@ class MediaItem {
         'genre': genre,
         'year': year,
         'poster_url': posterUrl,
+        'stream_url': streamUrl,
+        'stream_headers': streamHeaders,
+        'backdrop_url': backdropUrl,
+        'duration_minutes': durationMinutes,
         'kind': kind,
         'sources': sources.map((s) => s.toJson()).toList()
       };
@@ -71,10 +81,12 @@ class MediaItem {
           posterUrl: posterUrl ?? this.posterUrl,
           backdropUrl: backdropUrl ?? this.backdropUrl,
           streamUrl: streamUrl ?? this.streamUrl,
+          streamHeaders: streamHeaders,
           isSeries: isSeries,
           kind: kind,
           sources: sources);
   String get typeLabel => switch (kind) {
+        'live' => 'Ao vivo',
         'series' => 'Série',
         'novela' => 'Novela',
         'reality' => 'Reality',

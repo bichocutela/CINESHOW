@@ -7,6 +7,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'core/models/media_item.dart';
+import 'features/live/live_page.dart';
+import 'features/player/presentation/player_page.dart';
+import 'features/player/presentation/source_page.dart';
 import 'core/services/live_catalog.dart';
 import 'core/services/app_updates.dart';
 
@@ -40,6 +43,7 @@ class _ShellState extends State<ShellPage> {
   List<String> errors = [];
   bool loading = true;
   int tab = 0;
+  bool liveOpened = false;
   String filter = 'Todos';
   @override
   void initState() {
@@ -199,16 +203,22 @@ class _ShellState extends State<ShellPage> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _details(i))
           ]),
+          if (liveOpened) const LivePage() else const SizedBox.shrink(),
           const SettingsPage()
         ]),
         bottomNavigationBar: NavigationBar(
             selectedIndex: tab,
-            onDestinationSelected: (v) => setState(() => tab = v),
+            onDestinationSelected: (v) => setState(() {
+                  tab = v;
+                  if (v == 2) liveOpened = true;
+                }),
             destinations: const [
               NavigationDestination(
                   icon: Icon(Icons.home_outlined), label: 'Início'),
               NavigationDestination(
                   icon: Icon(Icons.bookmark_border), label: 'Minha lista'),
+              NavigationDestination(
+                  icon: Icon(Icons.live_tv), label: 'Ao Vivo'),
               NavigationDestination(
                   icon: Icon(Icons.settings_outlined), label: 'Sobre')
             ]));
@@ -312,14 +322,14 @@ class DetailsPage extends StatefulWidget {
 
 class _DetailsState extends State<DetailsPage> {
   late bool favorite = widget.isFavorite;
-  late MediaSource selected = widget.item.sources.first;
+  late MediaSource? selected = widget.item.sources.firstOrNull;
   List<Map<String, dynamic>> episodes = [];
   bool loading = false;
   String? error;
   @override
   void initState() {
     super.initState();
-    if (widget.item.kind != 'movie') _episodes();
+    if (widget.item.kind != 'movie' && selected != null) _episodes();
   }
 
   Future<void> _episodes() async {
@@ -329,7 +339,7 @@ class _DetailsState extends State<DetailsPage> {
       episodes = [];
     });
     try {
-      final e = await widget.catalog.episodes(selected);
+      final e = await widget.catalog.episodes(selected!);
       if (mounted) setState(() => episodes = e);
     } catch (_) {
       if (mounted) {
@@ -358,6 +368,15 @@ class _DetailsState extends State<DetailsPage> {
     }
   }
 
+  void _watchSource(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) return;
+    Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+            builder: (_) => SourcePage(title: widget.item.title, url: url)));
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: Text(widget.item.title)),
@@ -382,14 +401,29 @@ class _DetailsState extends State<DetailsPage> {
                     ? null
                     : (_) {
                         setState(() => selected = s);
-                        if (widget.item.kind != 'movie') _episodes();
+                        if (widget.item.kind != 'movie' && selected != null)
+                          _episodes();
                       })
         ]),
         const SizedBox(height: 12),
-        FilledButton.icon(
-            onPressed: () => _open(selected.pageUrl),
-            icon: const Icon(Icons.open_in_new),
-            label: const Text('Abrir na fonte')),
+        if (widget.item.streamUrl?.isNotEmpty == true)
+          FilledButton.icon(
+              onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                      builder: (_) => PlayerPage(media: widget.item))),
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('Assistir no CINESHOW')),
+        if (widget.item.streamUrl?.isNotEmpty != true && selected != null)
+          FilledButton.icon(
+              onPressed: () => _watchSource(selected!.pageUrl),
+              icon: const Icon(Icons.play_arrow),
+              label: const Text('Assistir no app · player da fonte')),
+        if (selected != null)
+          OutlinedButton.icon(
+              onPressed: () => _open(selected!.pageUrl),
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Abrir na fonte')),
         OutlinedButton.icon(
             onPressed: () {
               widget.onFavorite();
@@ -399,7 +433,7 @@ class _DetailsState extends State<DetailsPage> {
             label:
                 Text(favorite ? 'Na minha lista' : 'Adicionar à minha lista')),
         if (widget.item.description.isNotEmpty) Text(widget.item.description),
-        if (widget.item.kind != 'movie') ...[
+        if (widget.item.kind != 'movie' && selected != null) ...[
           const SizedBox(height: 20),
           Row(children: [
             const Expanded(
@@ -423,9 +457,9 @@ class _DetailsState extends State<DetailsPage> {
             ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(e['title'] as String),
-                trailing: const Icon(Icons.open_in_new),
-                onTap: () =>
-                    _open((e['page_url'] as String?) ?? selected.pageUrl))
+                trailing: const Icon(Icons.play_circle_outline),
+                onTap: () => _watchSource(
+                    (e['page_url'] as String?) ?? selected!.pageUrl))
         ]
       ]));
 }
