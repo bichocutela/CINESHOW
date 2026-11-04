@@ -57,7 +57,7 @@ class ProviderPlaybackResolver {
       final request = http.Request(body == null ? 'GET' : 'POST', uri)
         ..followRedirects = false
         ..headers.addAll({
-          'User-Agent': 'CINESHOW/0.4.0',
+          'User-Agent': 'CINESHOW/0.4.1',
           if (referer != null) 'Referer': referer,
           if (xhr) 'X-Requested-With': 'XMLHttpRequest',
           if (cookies[uri.host]?.isNotEmpty == true)
@@ -88,7 +88,7 @@ class ProviderPlaybackResolver {
           throw StateError('A fonte mudou de endereço durante a consulta.');
         }
         uri = next;
-        if (response.statusCode == 303) body = null;
+        if ([301, 302, 303].contains(response.statusCode)) body = null;
         continue;
       }
       if (response.statusCode != 200) {
@@ -124,50 +124,48 @@ class ProviderPlaybackResolver {
   Future<List<ProviderPlaybackOption>> resolve(
       MediaItem item, MediaSource source,
       {required String pageUrl}) async {
-    final home =
-        await _text(Uri.parse(origins[source.provider]!), discover: true);
-    if (source.provider == 'xonados') return _xonados(source, pageUrl);
+    final origin = origins[source.provider];
+    if (origin == null) throw StateError('Fonte não reconhecida.');
+    if (source.provider == 'xonados') {
+      await _text(Uri.parse('$origin/'), discover: true);
+      return _xonados(source, pageUrl);
+    }
+    final path = Uri.parse(pageUrl);
+    final page = await _text(
+        Uri.parse(origin).replace(path: path.path, query: path.query),
+        discover: true);
     final brand = source.provider == 'rtfilmes' ? 'pobreflix' : 'topflix';
-    if (!home.toLowerCase().contains(brand) || !home.contains('dooplay')) {
+    if (!page.toLowerCase().contains(brand) ||
+        !page.toLowerCase().contains('dooplay')) {
       throw StateError('A fonte não retornou seu catálogo reconhecido.');
     }
-    return _dooplay(item, source, pageUrl);
+    return _dooplay(source, page);
   }
 
   Future<List<ProviderPlaybackOption>> _dooplay(
-      MediaItem item, MediaSource source, String pageUrl) async {
+      MediaSource source, String page) async {
     final selections = <Map<String, String>>[];
-    if (item.kind == 'movie' && RegExp(r'^\d+$').hasMatch(source.sourceId)) {
-      for (var i = 1; i <= 4; i++) {
-        selections.add({
-          'post': source.sourceId,
-          'type': 'movie',
-          'source': '$i',
-          'label': 'Player $i'
-        });
+    final seen = <String>{};
+    for (final tag
+        in RegExp(r'<li\b[^>]*>.*?</li>', dotAll: true).allMatches(page)) {
+      final a = attributes(tag[0]!);
+      if (a['data-nume'] == 'trailer' ||
+          !RegExp(r'^\d+$').hasMatch(a['data-post'] ?? '') ||
+          !RegExp(r'^\d+$').hasMatch(a['data-nume'] ?? '') ||
+          !RegExp(r'^[a-zA-Z0-9-]+$').hasMatch(a['data-type'] ?? '')) {
+        continue;
       }
-    } else {
-      final pageUri = Uri.parse(pageUrl);
-      final page = await _get(
-          '${pageUri.path}${pageUri.hasQuery ? '?${pageUri.query}' : ''}');
-      for (final tag
-          in RegExp(r'<li\b[^>]*>.*?</li>', dotAll: true).allMatches(page)) {
-        final a = attributes(tag[0]!);
-        if (a['data-nume'] == 'trailer' ||
-            !RegExp(r'^\d+$').hasMatch(a['data-post'] ?? '') ||
-            !RegExp(r'^\d+$').hasMatch(a['data-nume'] ?? '') ||
-            !RegExp(r'^[a-zA-Z0-9-]+$').hasMatch(a['data-type'] ?? '')) {
-          continue;
-        }
-        selections.add({
-          'post': a['data-post']!,
-          'type': a['data-type']!,
-          'source': a['data-nume']!,
-          'label': plain(tag[0]!)
-        });
+      if (!seen.add('${a['data-post']}:${a['data-type']}:${a['data-nume']}')) {
+        continue;
       }
+      selections.add({
+        'post': a['data-post']!,
+        'type': a['data-type']!,
+        'source': a['data-nume']!,
+        'label': plain(tag[0]!)
+      });
     }
-    final found = await Future.wait(selections.take(6).map((selection) async {
+    final found = await Future.wait(selections.take(12).map((selection) async {
       try {
         final data = jsonDecode(await _get(
                 '/wp-json/dooplayer/v2/${selection['post']}/${selection['type']}/${selection['source']}'))
@@ -232,7 +230,7 @@ class ProviderPlaybackResolver {
         }
         final headers = {
           'Referer': '${uri.origin}/',
-          'User-Agent': 'CINESHOW/0.4.0'
+          'User-Agent': 'CINESHOW/0.4.1'
         };
         final direct = resources['iframe'] != true;
         if (direct && !await _isVideo(value!, headers)) continue;
@@ -314,7 +312,7 @@ class ProviderPlaybackResolver {
     final result = <ProviderPlaybackOption>[];
     final date = episodeUrl.queryParameters['date']!;
     for (final url in urls.take(3)) {
-      final headers = {'Referer': '$_origin/', 'User-Agent': 'CINESHOW/0.4.0'};
+      final headers = {'Referer': '$_origin/', 'User-Agent': 'CINESHOW/0.4.1'};
       if (!await _isVideo(url, headers)) continue;
       result.add(ProviderPlaybackOption(
           url: url,
@@ -337,13 +335,23 @@ class ProviderPlaybackResolver {
         ..headers.addAll({...headers, 'Range': 'bytes=0-1023'});
       final response =
           await client.send(request).timeout(const Duration(seconds: 15));
-      final first =
-          await response.stream.first.timeout(const Duration(seconds: 15));
-      if (![200, 206].contains(response.statusCode)) return false;
-      final signature = latin1.decode(first.take(32).toList());
-      return first.length >= 8 && signature.substring(4, 8) == 'ftyp' ||
-          signature.startsWith('#EXTM3U') ||
-          first.length > 188 && first[0] == 0x47 && first[188] == 0x47;
+      if (![200, 206].contains(response.statusCode)) {
+        await response.stream.listen((_) {}).cancel();
+        return false;
+      }
+      final prefix = <int>[];
+      await for (final chunk
+          in response.stream.timeout(const Duration(seconds: 15))) {
+        prefix.addAll(chunk.take(1024 - prefix.length));
+        final signature = latin1.decode(prefix.take(32).toList());
+        if (prefix.length >= 8 && signature.substring(4, 8) == 'ftyp' ||
+            signature.startsWith('#EXTM3U') ||
+            prefix.length > 188 && prefix[0] == 0x47 && prefix[188] == 0x47) {
+          return true;
+        }
+        if (prefix.length == 1024) break;
+      }
+      return false;
     } catch (_) {
       return false;
     }

@@ -60,7 +60,9 @@ jobs:
           flutter create --platforms=android --org=com.bichocutela --project-name=cineshow .
           python scripts/configure_android.py
       - run: flutter pub get
-      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: |
+          dart format lib test
+          git diff --exit-code -- lib test
       - run: flutter analyze
       - run: flutter test
       - run: python -m unittest discover -s tests -v
@@ -123,12 +125,15 @@ jobs:
           generate_release_notes: true
           body: |
             Atualização oficial com a mesma assinatura permanente e o mesmo pacote Android.
+            - Descobre os players reais de cada título, ignorando trailers e duplicatas.
+            - Preserva opções que responderam quando outra falha.
+            - Valida vídeo recebido em blocos pequenos de rede.
             - Xonados: localiza o vídeo do capítulo em uma sessão nova e abre mídia validada no player nativo.
             - Filmes: consulta os players pela API DooPlay, sem abrir a página completa do agregador.
             - Seleção de players retornados pela fonte e incorporação em uma página mínima de iframe.
             - Diferencia vídeo direto de player externo, que pode exigir anúncios ou verificação do provedor.
             - Atualiza as origens observadas das fontes e mantém assinatura e atualização dentro do app.
             A disponibilidade das transmissões e a compatibilidade dos players de terceiros dependem de cada fonte.
-            Na versão 0.2.1, abra Sobre e verifique a atualização para baixar pelo próprio CINESHOW.
+            Abra Sobre e verifique a atualização para baixar pelo próprio CINESHOW.
     permissions:
       contents: write

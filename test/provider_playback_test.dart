@@ -26,9 +26,13 @@ void main() {
             headers: {'location': 'https://current.example/'});
       }
       if (request.url.path == '/') {
-        return http.Response('Pobreflix dooplay', 200);
+        return http.Response('''Pobreflix dooplay
+<li data-post="123" data-type="movie" data-nume="1">GD</li>
+<li data-post="123" data-type="movie" data-nume="7">Servidor extra</li>
+<li data-post="123" data-type="movie" data-nume="7">Duplicado</li>
+<li data-post="123" data-type="movie" data-nume="trailer">Trailer</li>''', 200);
       }
-      if (request.url.path.endsWith('/movie/1')) {
+      if (request.url.path.endsWith('/movie/7')) {
         return http.Response(
             jsonEncode({
               'type': 'iframe',
@@ -52,8 +56,11 @@ void main() {
       expect(
           calls.any((u) =>
               u.host == 'current.example' &&
-              u.path == '/wp-json/dooplayer/v2/123/movie/1'),
+              u.path == '/wp-json/dooplayer/v2/123/movie/7'),
           isTrue);
+      expect(calls.where((u) => u.path.endsWith('/movie/7')), hasLength(1));
+      expect(calls.any((u) => u.path.endsWith('/movie/2')), isFalse);
+      expect(calls.any((u) => u.path.endsWith('/trailer')), isFalse);
     } finally {
       resolver.close();
     }
@@ -116,6 +123,54 @@ void main() {
       expect(result.single.headers['Referer'], 'https://www.xonados.com/');
     } finally {
       resolver.close();
+    }
+  });
+  test('video signature accepts fragmented MP4 and rejects HTML', () async {
+    for (final valid in [true, false]) {
+      final resolver = ProviderPlaybackResolver(
+          client: MockClient.streaming((request, body) async {
+        await body.drain<void>();
+        if (request.url.host == 'cdn.example') {
+          expect(request.headers['Range'], 'bytes=0-1023');
+          final chunks = valid
+              ? <List<int>>[
+                  [0, 0],
+                  [0, 24, 102],
+                  [116, 121, 112, 105, 115, 111, 109]
+                ]
+              : [utf8.encode('<html>not a video</html>')];
+          return http.StreamedResponse(Stream.fromIterable(chunks), 206);
+        }
+        if (request.method == 'GET') {
+          return http.StreamedResponse(
+              Stream.value(utf8.encode('<div idS="public"></div>')), 200);
+        }
+        return http.StreamedResponse(
+            Stream.value(utf8.encode(jsonEncode({
+              'resources': {
+                'iframe': false,
+                'sources': [
+                  {'file': 'https://cdn.example/video'}
+                ]
+              }
+            }))),
+            200);
+      }));
+      try {
+        final result = await resolver.expand(const ProviderPlaybackOption(
+            url: 'https://embed.embedplayer.site/tt1234567',
+            label: 'GD',
+            direct: false,
+            id: 'gd'));
+        expect(result.single.direct, valid);
+        expect(
+            result.single.url,
+            valid
+                ? 'https://cdn.example/video'
+                : 'https://embed.embedplayer.site/tt1234567');
+      } finally {
+        resolver.close();
+      }
     }
   });
   test(
