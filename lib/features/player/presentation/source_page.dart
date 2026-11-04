@@ -27,8 +27,9 @@ class _SourcePageState extends State<SourcePage> {
             if (mounted) setState(() => failed = false);
           },
           onWebResourceError: (e) {
-            if (mounted && e.isForMainFrame == true)
+            if (mounted && e.isForMainFrame == true) {
               setState(() => failed = true);
+            }
           },
           onNavigationRequest: (r) {
             final uri = Uri.tryParse(r.url);

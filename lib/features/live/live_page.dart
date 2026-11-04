@@ -4,6 +4,7 @@ import '../../core/services/iptv_catalog.dart';
 import '../player/presentation/player_page.dart';
 
 const categoryNames = {
+  'undefined': 'Sem categoria',
   'animation': 'Animação',
   'auto': 'Automóveis',
   'business': 'Negócios',
@@ -76,18 +77,20 @@ class _LivePageState extends State<LivePage> {
       final fresh = await catalog.refresh();
       if (mounted) setState(() => channels = fresh);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => error = channels.isEmpty
               ? 'Não foi possível carregar os canais. Tente novamente.'
               : 'Não foi possível atualizar. Exibindo os canais salvos.',
         );
+      }
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           loading = false;
           refreshing = false;
         });
+      }
     }
   }
 

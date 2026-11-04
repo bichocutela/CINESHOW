@@ -43,6 +43,23 @@ void main() {
     );
     expect(channels.single.media(0).kind, 'live');
   });
+  test('keeps streams without a channel ID under uncategorized', () {
+    final channels = IptvCatalog.parse([], [
+      {
+        'channel': null,
+        'title': 'Extra',
+        'url': 'https://example.org/live.m3u8'
+      },
+      {
+        'channel': null,
+        'title': 'Extra',
+        'url': 'https://example.org/live.m3u8'
+      },
+    ], []);
+    expect(channels, hasLength(1));
+    expect(channels.single.categories, ['undefined']);
+    expect(channels.single.media(0).title, 'Extra');
+  });
   test('catalog round trip preserves direct playback and headers', () {
     const media = MediaItem(
       id: 'test',

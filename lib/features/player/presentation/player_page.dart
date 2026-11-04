@@ -59,8 +59,9 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
         if (!mounted || request != generation) return;
         if (saved != null &&
             saved.progress < .95 &&
-            saved.position < next.value.duration)
+            saved.position < next.value.duration) {
           await next.seekTo(saved.position);
+        }
       }
       if (!mounted || request != generation) return;
       setState(() => loading = false);
@@ -69,12 +70,13 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       if (!mounted || request != generation) return;
       controller = null;
       await next?.dispose();
-      if (mounted)
+      if (mounted) {
         setState(() {
           loading = false;
           error =
               'Não foi possível reproduzir. Tente novamente ou selecione outra fonte na lista de canais.';
         });
+      }
     }
   }
 

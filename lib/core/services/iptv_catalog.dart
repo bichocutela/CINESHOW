@@ -49,10 +49,13 @@ class IptvCatalog {
       if (id == null ||
           url == null ||
           !['https', 'http'].contains(url.scheme) ||
-          url.host.isEmpty) continue;
+          url.host.isEmpty) {
+        continue;
+      }
       final list = grouped.putIfAbsent(id, () => []);
-      if (!list.any((s) => s['url'] == raw['url']))
+      if (!list.any((s) => s['url'] == raw['url'])) {
         list.add(Map<String, dynamic>.from(raw));
+      }
     }
     final images = <String, String>{};
     for (final logo in logos.whereType<Map>()) {
@@ -68,8 +71,9 @@ class IptvCatalog {
     final result = <TvChannel>[];
     for (final c in channels.whereType<Map>()) {
       final id = c['id'] as String?;
-      if (id == null || c['is_nsfw'] == true || !grouped.containsKey(id))
+      if (id == null || c['is_nsfw'] == true || !grouped.containsKey(id)) {
         continue;
+      }
       result.add(
         TvChannel(
           id,
@@ -80,6 +84,19 @@ class IptvCatalog {
           grouped[id]!,
         ),
       );
+    }
+    final unknown = <String>{};
+    for (final raw in streams.whereType<Map>()) {
+      if (raw['channel'] != null) continue;
+      final url = Uri.tryParse('${raw['url']}');
+      if (url == null ||
+          !['http', 'https'].contains(url.scheme) ||
+          url.host.isEmpty ||
+          !unknown.add(url.toString())) {
+        continue;
+      }
+      result.add(TvChannel('unmapped:$url', raw['title'] as String? ?? url.host,
+          '', const ['undefined'], null, [Map<String, dynamic>.from(raw)]));
     }
     result.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     return result;
@@ -105,8 +122,9 @@ class IptvCatalog {
         final response = await _client
             .get(Uri.https('iptv-org.github.io', '/api/$name.json'))
             .timeout(const Duration(seconds: 30));
-        if (response.statusCode != 200)
+        if (response.statusCode != 200) {
           throw StateError('Catálogo indisponível');
+        }
         return jsonDecode(utf8.decode(response.bodyBytes)) as List;
       }),
     );
