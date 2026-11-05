@@ -229,8 +229,8 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
       if (mounted) {
         setState(() {
           favoriteState = next;
-      }
         });
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -238,11 +238,6 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
                 'Não foi possível salvar a minha lista. Tente novamente.')));
       }
     }
-  }
-
-  Future<void> _recent() async {
-    final rows = await ContinueWatching().list();
-    if (mounted) setState(() => recent = rows);
   }
 
   Future<void> _details(MediaItem item,
