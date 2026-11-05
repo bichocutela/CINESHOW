@@ -111,8 +111,10 @@ class SuperflixService {
 
   Future<List<Map<String, dynamic>>> cachedLive({bool events = false}) async {
     try {
-      final body = await rootBundle.loadString(
-          'assets/superflix_${events ? 'events' : 'channels'}.json');
+      final body = snapshotLoader != null
+          ? await snapshotLoader!(events)
+          : await rootBundle.loadString(
+              'assets/superflix_${events ? 'events' : 'channels'}.json');
       return _readSnapshot(body, events);
     } catch (_) {
       return [];
