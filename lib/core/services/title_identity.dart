@@ -11,7 +11,9 @@ String? originalSourceTitle(String html) {
             .firstMatch(field[1]!)?[1] ??
         '';
     if (!['titulooriginal', 'originaltitle']
-        .contains(normalizedTitle(label).replaceAll('í', 'i'))) continue;
+        .contains(normalizedTitle(label).replaceAll('í', 'i'))) {
+continue;
+}
     final value = RegExp(r'<span\b[^>]*>(.*?)</span>', dotAll: true)
         .firstMatch(field[1]!)?[1];
     if (value == null) continue;
@@ -35,7 +37,9 @@ Map<String, dynamic>? matchImdbSuggestion(
     if (id is! String || !RegExp(r'^tt\d{7,10}$').hasMatch(id)) continue;
     final type = '${row['qid']}'.toLowerCase();
     if (movie ? type != 'movie' : !['tvseries', 'tvminiseries'].contains(type))
-      continue;
+      {
+continue;
+}
     if (expectedId != null) {
       if (id != expectedId) continue;
     } else {

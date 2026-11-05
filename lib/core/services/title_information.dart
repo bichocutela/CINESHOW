@@ -239,7 +239,9 @@ class TitleInformationService {
         }
         final facts = sourceFacts(page.html);
         if (facts['originalTitle'] is String)
-          aliases.add(facts['originalTitle'] as String);
+          {
+aliases.add(facts['originalTitle'] as String);
+}
         final people = publishedCredits(page.html);
         result['cast'] = mergeCast([
           ...(result['cast'] as List? ?? []),

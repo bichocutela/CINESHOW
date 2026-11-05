@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/media_item.dart';
 import 'live_catalog.dart';
 import 'source_origins.dart';
-import 'source_html.dart';
 
 String actorSlug(String name) {
   var slug = name.trim().toLowerCase();
@@ -49,6 +48,8 @@ class ActorCatalog {
   final _paths = <String, String>{};
   final _ended = <String>{};
   List<MediaItem> _items = [];
+  String _actor = '';
+  String _actor = '';
   String normalize(String name) =>
       name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
@@ -93,20 +94,24 @@ class ActorCatalog {
 
   Future<ActorSearchResult> search(String name,
       {bool reset = false, List<String> archiveUrls = const []}) async {
-    if (reset || _paths.isEmpty) {
+    if (reset || _paths.isEmpty || _actor != normalize(name)) {
+      _actor = normalize(name);
       _pages.clear();
       _paths.clear();
       _ended.clear();
       _items = await titles(name);
       for (final value in archiveUrls) {
-        final uri = Uri.tryParse(canonicalSourceUrl(value));
+        fi{
+nal uri = Uri.tryParse(canonicalSourceUrl(value));
+}
         if (uri == null || uri.scheme != 'https' || uri.userInfo.isNotEmpty)
           continue;
         final provider = origins.entries
             .where((v) => v.value == uri.origin)
             .firstOrNull
             ?.key;
-        if (!['rtfilmes', 'tontons', 'amyflix'].contains(provider) ||
+        if (!['rtfilmes', 'tontons', {
+'amyflix'].contains(provider) ||
             !RegExp(r'^/(?:melhores-elenco|cast|elenco|atores)/[^/]+/?$')
                 .hasMatch(uri.path)) continue;
         _paths.putIfAbsent(
@@ -128,8 +133,11 @@ class ActorCatalog {
       try {
         final html = await session
             .get('${entry.value}${page == 1 ? '' : 'page/$page/'}');
+}
         final rows = parseActorArchive(html, name, entry.key);
-        _pages[entry.key] = page + 1;
+        _p{
+ages[entry.key] = page + 1;
+}
         if (!html.contains('${entry.value}page/${page + 1}/'))
           _ended.add(entry.key);
         return rows;
