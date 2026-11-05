@@ -141,14 +141,18 @@ class ProviderPlaybackResolver {
       final chapter =
           episodes.where((v) => v['page_url'] == pageUrl).firstOrNull;
       if (chapter == null)
-        throw StateError('Capítulo não publicado por esta fonte.');
+        {
+throw StateError('Capítulo não publicado por esta fonte.');
+}
       final headers = {
         'Referer': '$tvAbertaOrigin/',
         'User-Agent': 'CINESHOW/0.6.1'
       };
       if (!await _isVideo(pageUrl, headers))
-        throw StateError(
+        {
+throw StateError(
             'A fonte não entregou mídia compatível para este capítulo.');
+}
       return [
         ProviderPlaybackOption(
             url: pageUrl,

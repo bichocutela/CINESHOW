@@ -96,13 +96,17 @@ class TvAbertaService {
     if (_novels != null &&
         _at != null &&
         DateTime.now().difference(_at!) < const Duration(minutes: 30))
-      return _novels!;
+      {
+return _novels!;
+}
     return _pending ??= (() async {
       final prefs = await SharedPreferences.getInstance();
       try {
         final body = await _get('/json/novelas.json');
         if (jsonDecode(body) is! List)
-          throw const FormatException('Novelas inválidas');
+          {
+throw const FormatException('Novelas inválidas');
+}
         _novels = body;
         _at = DateTime.now();
         await prefs.setString('cineshow.tvaberta.novelas.v1', body);
@@ -141,7 +145,9 @@ class TvAbertaService {
       if (uri != null &&
           uri.scheme == 'https' &&
           uri.host.isNotEmpty &&
-          uri.userInfo.isEmpty) base = uri.origin;
+          uri.userInfo.isEmpty) {
+base = uri.origin;
+}
     } catch (_) {/* Retain the last published player origin. */}
     return parseTvEpisodes(data, base: base);
   }
@@ -154,7 +160,9 @@ class TvAbertaService {
     if (body == null) {
       body = await _get('/json/canais.json');
       if (jsonDecode(body) is! List)
-        throw const FormatException('Canais inválidos');
+        {
+throw const FormatException('Canais inválidos');
+}
       await prefs.setString('cineshow.tvaberta.channels.v1', body);
     }
     return (jsonDecode(body) as List)
@@ -175,7 +183,9 @@ class TvAbertaService {
       if (uri == null ||
           !['http', 'https'].contains(uri.scheme) ||
           uri.host.isEmpty ||
-          uri.userInfo.isNotEmpty) return;
+          uri.userInfo.isNotEmpty) {
+return;
+}
       urls.putIfAbsent(
           uri.toString(),
           () => {
@@ -197,9 +207,11 @@ class TvAbertaService {
           final probe =
               await _probe(raw, '${data['referer'] ?? '$tvAbertaOrigin/'}');
           if (probe != null)
-            add(probe.$1,
+            {
+add(probe.$1,
                 referer: '${data['referer'] ?? '$tvAbertaOrigin/'}',
                 native: probe.$2);
+}
         }
       } else {
         for (final url in (data['urls'] as List? ?? [data['url']])) {
@@ -231,7 +243,9 @@ class TvAbertaService {
     final uri = Uri.tryParse(url);
     if (uri == null ||
         !['http', 'https'].contains(uri.scheme) ||
-        uri.userInfo.isNotEmpty) return null;
+        uri.userInfo.isNotEmpty) {
+return null;
+}
     final client = http.Client();
     try {
       final request = http.Request('GET', uri)
@@ -251,12 +265,16 @@ class TvAbertaService {
       final prefix = latin1.decode(bytes);
       if (prefix.startsWith('#EXTM3U') ||
           (bytes.length >= 8 && prefix.substring(4, 8) == 'ftyp'))
-        return (url, true);
+        {
+return (url, true);
+}
       final hls = RegExp(r'''https?://[^\s"'<>]+\.m3u8[^\s"'<>]*''')
           .firstMatch(prefix)?[0];
       if (hls != null) return (hls, true);
       if (prefix.toLowerCase().contains('<iframe') ||
-          prefix.toLowerCase().contains('<video')) return (url, false);
+          prefix.toLowerCase().contains('<video')) {
+return (url, false);
+}
       return null;
     } finally {
       client.close();

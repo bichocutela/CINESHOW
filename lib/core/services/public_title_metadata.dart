@@ -91,7 +91,9 @@ Iterable<Map> structuredTitles(String html) sync* {
       for (final node in nodes) {
         if (node is Map &&
             ['Movie', 'TVSeries', 'TVMiniSeries'].contains(node['@type']))
-          yield node;
+          {
+yield node;
+}
       }
     } catch (_) {/* A malformed metadata block must not hide other blocks. */}
   }
@@ -109,7 +111,9 @@ Map<String, dynamic> publicImdbTitle(String html, String imdbId,
     if (url == null ||
         !['www.imdb.com', 'imdb.com'].contains(url.host) ||
         !url.path.startsWith('/title/$imdbId/') ||
-        (node['@type'] == 'Movie') != movie) continue;
+        (node['@type'] == 'Movie') != movie) {
+continue;
+}
     final aggregate = node['aggregateRating'];
     final score = aggregate is Map &&
             ratingNumber(aggregate['bestRating'] ?? 10, 10) == 10
@@ -144,14 +148,18 @@ List<Uri> rottenCandidates(String html, String title, int year,
         in RegExp(r'<a\b([^>]*)>(.*?)</a>', dotAll: true).allMatches(row[2]!)) {
       final attr = attributes(link[1]!);
       if (attr['data-qa'] != 'info-name' ||
-          normalizedTitle(link[2]!) != normalizedTitle(title)) continue;
+          normalizedTitle(link[2]!) != normalizedTitle(title)) {
+continue;
+}
       final uri = Uri.parse('https://www.rottentomatoes.com/')
           .resolve(attr['href'] ?? '');
       if (uri.scheme != 'https' ||
           uri.host != 'www.rottentomatoes.com' ||
           uri.userInfo.isNotEmpty ||
           !RegExp(movie ? r'^/m/[a-zA-Z0-9_-]+$' : r'^/tv/[a-zA-Z0-9_-]+$')
-              .hasMatch(uri.path)) continue;
+              .hasMatch(uri.path)) {
+continue;
+}
       found[uri.toString()] = uri;
     }
   }
@@ -170,7 +178,9 @@ bool matchesRottenTitle(String html, Uri uri, String title, int year,
   for (final node in structuredTitles(html)) {
     if ((node['@type'] == 'Movie') != movie ||
         normalizedTitle('${node['name']}') != normalizedTitle(title) ||
-        node['url'] != canonical) continue;
+        node['url'] != canonical) {
+continue;
+}
     final released = int.tryParse(
         '${node['dateCreated'] ?? node['datePublished'] ?? ''}'
             .split('-')
@@ -198,7 +208,9 @@ Map<String, dynamic> publicRottenTitle(
         final raw = data[entry.key];
         if (raw is! Map ||
             (entry.key == 'audienceScore' && data['hideAudienceScore'] == true))
-          continue;
+          {
+continue;
+}
         final score = ratingNumber(raw['scorePercent'], 100);
         if (score != null) result[entry.value] = score.toInt();
       }
@@ -215,7 +227,9 @@ List<Map<String, String>> rottenCredits(String html) {
           dotAll: true)
       .allMatches(html)) {
     if (!(attributes(card[1]!)['data-role'] ?? '').split(',').contains('cast'))
-      continue;
+      {
+continue;
+}
     final slots = <String, String>{};
     for (final text
         in RegExp(r'<rt-text\b([^>]*)>(.*?)</rt-text>', dotAll: true)
@@ -224,10 +238,12 @@ List<Map<String, String>> rottenCredits(String html) {
     }
     final name = slots['title'] ?? '';
     if (name.isNotEmpty)
-      found[name.toLowerCase()] = {
+      {
+found[name.toLowerCase()] = {
         'name': name,
         'role': slots['characters'] ?? ''
       };
+}
   }
   return found.values.toList();
 }

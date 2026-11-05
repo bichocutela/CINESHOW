@@ -33,7 +33,9 @@ class _SuperflixLiveViewState extends State<SuperflixLiveView> {
           .map((v) => Map<String, dynamic>.from(v as Map))
           .toList();
       if (cached.isEmpty)
-        cached = await service.cachedLive(events: widget.events);
+        {
+cached = await service.cachedLive(events: widget.events);
+}
       if (mounted) {
         setState(() {
           items = cached;
@@ -55,7 +57,8 @@ class _SuperflixLiveViewState extends State<SuperflixLiveView> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(key, jsonEncode(rows));
       if (mounted)
-        setState(() {
+        {
+setState(() {
           items = rows;
           updated =
               service.lastUpdatedAt?.toLocal().toString().split('.').first;
@@ -63,6 +66,7 @@ class _SuperflixLiveViewState extends State<SuperflixLiveView> {
               ? '${service.lastError ?? 'Consulta direta indisponível.'} Exibindo a lista de reserva verificada.'
               : null;
         });
+}
     } catch (_) {
       if (mounted) {
         setState(() => error = items.isEmpty

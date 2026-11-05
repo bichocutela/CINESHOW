@@ -67,7 +67,9 @@ List<Map<String, dynamic>> parseSuperflixLive(String body,
   if (raw is! Map ||
       (!snapshot && raw['success'] != true) ||
       (snapshot && raw['source'] != superflixOrigin))
-    throw const FormatException('Invalid live directory');
+    {
+throw const FormatException('Invalid live directory');
+}
   final data = raw[snapshot ? 'items' : 'data'];
   if (data is! List) throw const FormatException('Missing live items');
   final rows = <Map<String, dynamic>>[];
@@ -76,13 +78,17 @@ List<Map<String, dynamic>> parseSuperflixLive(String body,
     if ([false, 0, '0'].contains(v['is_active']) ||
         [true, 1, '1'].contains(v['is_nsfw']) ||
         ['adulto', 'adultos', 'xxx'].contains('${v['category']}'.toLowerCase()))
-      continue;
+      {
+continue;
+}
     final uri = Uri.tryParse('${v[events ? 'play_event_url' : 'embed_url']}');
     if (uri == null ||
         uri.scheme != 'https' ||
         uri.origin != superflixOrigin ||
         uri.userInfo.isNotEmpty ||
-        !uri.path.startsWith(events ? '/eventos/' : '/canal/')) continue;
+        !uri.path.startsWith(events ? '/eventos/' : '/canal/')) {
+continue;
+}
     final name = v[events ? 'title' : 'name'];
     if (name is! String || name.trim().isEmpty) continue;
     rows.add(v);
@@ -93,10 +99,9 @@ List<Map<String, dynamic>> parseSuperflixLive(String body,
 class SuperflixService {
   SuperflixService(
       {SourceSession Function(String)? sessionFactory,
-      Future<String> Function(bool)? snapshotLoader,
+      this.snapshotLoader,
       http.Client Function()? clientFactory})
       : sessionFactory = sessionFactory ?? SourceSession.new,
-        snapshotLoader = snapshotLoader,
         clientFactory = clientFactory ?? http.Client.new;
   final SourceSession Function(String) sessionFactory;
   final Future<String> Function(bool)? snapshotLoader;
@@ -125,7 +130,9 @@ class SuperflixService {
 
   Future<List<Map<String, dynamic>>> _snapshot(bool events) async {
     if (snapshotLoader != null)
-      return _readSnapshot(await snapshotLoader!(events), events);
+      {
+return _readSnapshot(await snapshotLoader!(events), events);
+}
     final client = clientFactory();
     try {
       final response = await client
@@ -133,7 +140,9 @@ class SuperflixService {
               'https://raw.githubusercontent.com/bichocutela/CINESHOW/live-data/superflix_${events ? 'events' : 'channels'}.json'))
           .timeout(const Duration(seconds: 12));
       if (response.statusCode == 200)
-        return _readSnapshot(utf8.decode(response.bodyBytes), events);
+        {
+return _readSnapshot(utf8.decode(response.bodyBytes), events);
+}
     } catch (_) {
       /* A verified bundled directory remains the last fallback. */
     } finally {
@@ -141,7 +150,9 @@ class SuperflixService {
     }
     final bundled = await cachedLive(events: events);
     if (bundled.isEmpty)
-      throw StateError('Não foi possível carregar a lista de reserva.');
+      {
+throw StateError('Não foi possível carregar a lista de reserva.');
+}
     return bundled;
   }
 

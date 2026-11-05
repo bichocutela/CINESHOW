@@ -34,7 +34,9 @@ class SourceSession {
                 body: body))
         .timeout(const Duration(seconds: 20));
     if (response.statusCode != 200)
-      throw SourceHttpException(response.statusCode);
+      {
+throw SourceHttpException(response.statusCode);
+}
     final cookie = response.headers['set-cookie'];
     if (cookie != null) {
       for (final m

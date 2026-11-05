@@ -42,9 +42,11 @@ class _TvAbertaLiveViewState extends State<TvAbertaLiveView> {
       if (mounted) setState(() => channels = rows);
     } catch (_) {
       if (mounted)
-        setState(() => error = channels.isEmpty
+        {
+setState(() => error = channels.isEmpty
             ? 'A fonte não respondeu. Tente novamente.'
             : 'Exibindo a última lista salva.');
+}
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -78,9 +80,11 @@ class _TvAbertaLiveViewState extends State<TvAbertaLiveView> {
       }
     } catch (_) {
       if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        {
+ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text(
                 'Este canal não entregou uma transmissão disponível. Tente outro canal ou atualize a lista.')));
+}
     } finally {
       if (mounted) setState(() => opening = null);
     }
@@ -107,7 +111,8 @@ class _TvAbertaLiveViewState extends State<TvAbertaLiveView> {
             itemCount: rows.length + 1,
             itemBuilder: (context, index) {
               if (index == 0)
-                return Column(
+                {
+return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('Canais · TV Aberta Online',
@@ -145,6 +150,7 @@ class _TvAbertaLiveViewState extends State<TvAbertaLiveView> {
                             padding: EdgeInsets.all(24),
                             child: Text('Nenhum canal com estes filtros.'))
                     ]);
+}
               final row = rows[index - 1];
               return Card(
                   child: ListTile(

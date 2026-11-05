@@ -153,7 +153,9 @@ class TitleInformationService {
       ];
       final pages = await Future.wait(sources.map((entry) async {
         if (entry.provider == 'superflix' || entry.provider == 'tvaberta')
-          return null;
+          {
+return null;
+}
         try {
           final uri = Uri.parse(canonicalSourceUrl(entry.pageUrl));
           if (uri.origin != origins[entry.provider]) return null;
@@ -179,7 +181,9 @@ class TitleInformationService {
           in pages.whereType<({MediaSource source, String html})>()) {
         final pageId = sourceImdbId(page.html);
         if (confirmedId != null && pageId != null && pageId != confirmedId)
-          continue;
+          {
+continue;
+}
         final plot = sourceSynopsis(page.html);
         if (plot.isNotEmpty &&
             (result['plotSource'] == 'Catálogo' ||
@@ -201,7 +205,9 @@ class TitleInformationService {
         for (final values in [facts, people]) {
           for (final field in ['director', 'released', 'sourceYear']) {
             if (result[field] == null && values[field] != null)
-              result[field] = values[field];
+              {
+result[field] = values[field];
+}
           }
         }
         final score = publishedImdbRating(page.html);
@@ -302,7 +308,9 @@ class TitleInformationService {
           ]);
           for (final field in ['imdbRating', 'imdbRatingSource', 'director']) {
             if (public[field] != null && public[field] != '')
-              result[field] = public[field];
+              {
+result[field] = public[field];
+}
           }
         } catch (_) {
           /* Public access may be refused. Keep attributed source data. */
