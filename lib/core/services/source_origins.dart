@@ -3,9 +3,15 @@ const origins = {
   'tontons': 'https://filmeonlinebistrita.com',
   'xonados': 'https://www.xonados.com',
   'novelasflix': 'https://novelasflix.lol',
-  'amyflix': 'https://amyflix.net'
+  'amyflix': 'https://amyflix.net',
+  'animesonlinecc': 'https://animesonlinecc.to',
+  'megafilmes': 'https://megafilmeshd1.com',
+  'superflix': 'https://superflixapi.fun'
 };
 const sourceHostAliases = {
+  'animesonlinecc.to': 'animesonlinecc',
+  'megafilmeshd1.com': 'megafilmes',
+  'superflixapi.fun': 'superflix',
   'amyflix.net': 'amyflix',
   'amyflix.com': 'amyflix',
   'novelasflix.lol': 'novelasflix',

@@ -21,6 +21,11 @@ import 'features/player/presentation/player_page.dart';
 import 'features/player/presentation/source_page.dart';
 import 'core/services/live_catalog.dart';
 import 'core/services/app_updates.dart';
+import 'features/details/title_information.dart';
+import 'features/anime/anime_category_view.dart';
+import 'core/services/anime_catalog.dart';
+import 'features/player/widgets/episode_pagination.dart';
+import 'core/services/catalog_arrivals.dart';
 
 void main() => runApp(const CineShowApp());
 
@@ -49,6 +54,7 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
   final catalog = LiveCatalog();
   List<ContinueEntry> recent = [];
   List<MediaItem> items = [];
+  List<MediaItem> arrivals = [];
   Set<String> favorites = {};
   List<String> errors = [];
   bool loading = true;
@@ -82,6 +88,7 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
       items = cached;
       loading = cached.isEmpty;
     });
+    arrivals = await CatalogArrivals().recordAndSort(cached);
     await _recent();
     await _sync();
   }
@@ -89,11 +96,13 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
   Future<void> _refresh() async {
     try {
       final r = await catalog.refresh();
+      final sorted = await CatalogArrivals().recordAndSort(catalog.mergeItems([...items, ...r.items]));
       if (!mounted) return;
       setState(() {
         if (r.items.isNotEmpty) {
           items = catalog.mergeItems([...items, ...r.items]);
         }
+        arrivals = sorted;
         errors = r.errors;
         loading = false;
       });
@@ -180,6 +189,7 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
         if (!mounted || !foreground) break;
         final item = MediaItem.fromJson(
             Map<String, dynamic>.from(watched['item'] as Map));
+        if (item.kind == 'anime') continue;
         final source = MediaSource.fromJson(
             Map<String, dynamic>.from(watched['source'] as Map));
         try {
@@ -222,7 +232,7 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
     if (mounted) setState(() => recent = rows);
   }
 
-  Future<void> _details(MediaItem item, {ContinueEntry? resume}) async {
+  Future<void> _details(MediaItem item, {ContinueEntry? resume, String? initialEpisode}) async {
     await Navigator.push(
         context,
         MaterialPageRoute<void>(
@@ -231,8 +241,9 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
                 catalog: catalog,
                 isFavorite: favorites.contains(item.id),
                 onFavorite: () => _favorite(item),
+                onOpenTitle: _details,
                 resumeSource: resume?.source,
-                resumePage: resume?.pageUrl)));
+                resumePage: resume?.pageUrl ?? initialEpisode)));
     await _recent();
   }
 
@@ -283,7 +294,8 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
                                 'Filme',
                                 'Série',
                                 'Novela',
-                                'Reality'
+                                'Reality',
+                                'Anime'
                               ])
                                 Padding(
                                     padding: const EdgeInsets.only(right: 8),
@@ -300,6 +312,10 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
                                               hasMore = true;
                                             })))
                             ])))),
+                if (filter == 'Anime')
+                  SliverFillRemaining(child: AnimeCategoryView(active: tab == 0,
+                    onOpen: (item, episode) => _details(item, initialEpisode: episode)))
+                else ...[
                 if (errors.isNotEmpty)
                   SliverToBoxAdapter(
                       child: Padding(
@@ -341,6 +357,17 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
                         child: HeroCard(
                             item: visible.first,
                             onOpen: () => _details(visible.first))),
+                  if (category == null && arrivals.isNotEmpty)
+                    SliverToBoxAdapter(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Padding(padding: EdgeInsets.fromLTRB(16, 20, 16, 12),
+                        child: Text('Adicionados recentemente', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold))),
+                      SizedBox(height: 250, child: ListView(scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16), children: [
+                          for (final item in arrivals.where((i) => filter == 'Todos' || i.typeLabel == filter).take(20))
+                            Padding(padding: const EdgeInsets.only(right: 12), child: SizedBox(width: 135,
+                              child: PosterCard(item: item, onOpen: () => _details(item))))
+                        ]))
+                    ])),
                   SliverToBoxAdapter(
                       child: CategoryBar(
                           section: filter,
@@ -389,6 +416,7 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
                                     : hasMore
                                         ? 'Carregar mais títulos'
                                         : 'Fim do catálogo disponível'))))
+                ]
                 ]
               ])),
           ListView(padding: const EdgeInsets.all(16), children: [
@@ -553,12 +581,14 @@ class DetailsPage extends StatefulWidget {
       required this.catalog,
       required this.isFavorite,
       required this.onFavorite,
+      required this.onOpenTitle,
       this.resumeSource,
       this.resumePage});
   final MediaItem item;
   final LiveCatalog catalog;
   final bool isFavorite;
   final VoidCallback onFavorite;
+  final ValueChanged<MediaItem> onOpenTitle;
   final MediaSource? resumeSource;
   final String? resumePage;
   @override
@@ -570,6 +600,8 @@ class _DetailsState extends State<DetailsPage> {
   late MediaSource? selected =
       widget.resumeSource ?? widget.item.sources.firstOrNull;
   List<Map<String, dynamic>> episodes = [];
+  int episodePage = 0;
+  List<Map<String, dynamic>> get visibleEpisodes => episodeBlock(episodes, episodePage);
   bool loading = false;
   bool resolving = false;
   String? playbackError;
@@ -599,6 +631,7 @@ class _DetailsState extends State<DetailsPage> {
       loading = true;
       error = null;
       episodes = [];
+      episodePage = 0;
     });
     try {
       final source = selected!;
@@ -636,14 +669,15 @@ class _DetailsState extends State<DetailsPage> {
       {bool download = false,
       bool auto = false,
       bool replaceCurrent = false,
-      bool startFullscreen = false}) async {
+      bool startFullscreen = false,
+      String? preferredPlayer}) async {
     final source = selected;
     if (resolving || source == null) return;
     if (widget.item.kind != 'movie' && episodes.isEmpty) await _episodes();
     if (!mounted) return;
     if (widget.item.kind != 'movie' && url == source.pageUrl) {
       final ordered = orderedChapters(episodes);
-      if (ordered.isNotEmpty) url = chapterUrl(ordered.last);
+      if (ordered.isNotEmpty) url = chapterUrl(widget.item.kind == 'anime' ? ordered.first : ordered.last);
     }
     final resolver = ProviderPlaybackResolver();
     activeResolver = resolver;
@@ -658,7 +692,7 @@ class _DetailsState extends State<DetailsPage> {
       if (!mounted) return;
       ProviderPlaybackOption? choice;
       if (options.length == 1 || auto) {
-        choice = options.where((v) => v.direct).firstOrNull ?? options.first;
+        choice = options.where((v) => v.label == preferredPlayer).firstOrNull ?? options.where((v) => v.direct).firstOrNull ?? options.first;
       } else {
         choice = await showModalBottomSheet<ProviderPlaybackOption>(
             context: context,
@@ -690,7 +724,7 @@ class _DetailsState extends State<DetailsPage> {
       }
       final next = nextChapter(episodes, url);
       Future<void> advance(bool fullscreen) => _watchSource(chapterUrl(next!),
-          auto: true, replaceCurrent: true, startFullscreen: fullscreen);
+          auto: true, replaceCurrent: true, startFullscreen: fullscreen, preferredPlayer: playable.label);
       final media = playable.media(widget.item);
       if (playable.direct) {
         try {
@@ -743,7 +777,7 @@ class _DetailsState extends State<DetailsPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: Text(widget.item.title), actions: [
-        if (widget.item.kind != 'movie' && selected != null)
+        if (widget.item.kind != 'movie' && widget.item.kind != 'anime' && selected != null)
           IconButton(
               tooltip: following
                   ? 'Parar de acompanhar capítulos'
@@ -765,7 +799,7 @@ class _DetailsState extends State<DetailsPage> {
                 }
               })
       ]),
-      body: ListView(padding: const EdgeInsets.all(20), children: [
+      body: SafeArea(top: false, child: ListView(padding: const EdgeInsets.fromLTRB(20, 20, 20, 32), children: [
         SizedBox(
             height: 260,
             child: Center(
@@ -839,7 +873,7 @@ class _DetailsState extends State<DetailsPage> {
             icon: Icon(favorite ? Icons.bookmark : Icons.bookmark_border),
             label:
                 Text(favorite ? 'Na minha lista' : 'Adicionar à minha lista')),
-        if (widget.item.description.isNotEmpty) Text(widget.item.description),
+        TitleInformation(item: widget.item, source: selected, onOpenTitle: widget.onOpenTitle),
         if (widget.item.kind != 'movie' && selected != null) ...[
           const SizedBox(height: 20),
           Row(children: [
@@ -860,7 +894,8 @@ class _DetailsState extends State<DetailsPage> {
             Text(error!, style: const TextStyle(color: Colors.white60)),
           if (!loading && error == null && episodes.isEmpty)
             const Text('Consulte a lista completa na fonte original.'),
-          for (final e in episodes)
+          EpisodePagination(total: episodes.length, page: episodePage, onChanged: (value) => setState(() => episodePage = value)),
+          for (final e in visibleEpisodes)
             ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(e['title'] as String),
@@ -880,7 +915,7 @@ class _DetailsState extends State<DetailsPage> {
                     (e['player_path'] as String?) ??
                     selected!.pageUrl))
         ]
-      ]));
+      ])));
 }
 
 class SearchPage extends StatefulWidget {
@@ -1163,7 +1198,7 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
       Text('Versão $version'),
       const SizedBox(height: 24),
       const Text(
-          'Catálogo de filmes, séries e novelas. Puxe o início para atualizar. Os vídeos abrem na fonte original.'),
+          'Catálogo de filmes, séries, novelas e animes. Puxe para atualizar. Reprodução no app conforme a disponibilidade da fonte.'),
       const SizedBox(height: 24),
       OutlinedButton.icon(
           onPressed: () => Navigator.push(context,

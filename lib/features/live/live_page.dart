@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/iptv_catalog.dart';
 import 'live_player_page.dart';
+import 'superflix_live_view.dart';
 
 const categoryNames = {
   'undefined': 'Sem categoria',
@@ -49,6 +50,7 @@ class _LivePageState extends State<LivePage> {
   bool loading = true, refreshing = false, onlyFavorites = false;
   String query = '', country = 'BR', category = '';
   String? error;
+  String source = 'IPTV';
   @override
   void initState() {
     super.initState();
@@ -135,7 +137,7 @@ class _LivePageState extends State<LivePage> {
               c.name.toLowerCase().contains(query.toLowerCase().trim()),
         )
         .toList();
-    return RefreshIndicator(
+    final iptv = RefreshIndicator(
       onRefresh: _refresh,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -288,5 +290,13 @@ class _LivePageState extends State<LivePage> {
         },
       ),
     );
+    return SafeArea(top: false, child: Column(children: [
+      Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 4), child: Wrap(spacing: 8, children: [
+        for (final value in ['IPTV', 'SuperFlix', 'Agenda'])
+          ChoiceChip(label: Text(value), selected: source == value,
+              onSelected: (_) => setState(() => source = value))
+      ])),
+      Expanded(child: source == 'IPTV' ? iptv : SuperflixLiveView(key: ValueKey(source), events: source == 'Agenda'))
+    ]));
   }
 }

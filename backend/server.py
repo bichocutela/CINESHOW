@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit, parse_qs
 from backend.catalog import DooplayAdapter, XonadosAdapter, Source, merge
+from backend.metadata import metadata
 DB = os.environ.get('CINESHOW_DB', 'catalog.sqlite3')
 LOCK = threading.Lock()
 
@@ -56,6 +57,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if route.path == '/health': data={'ok':True}
             elif route.path == '/v1/catalog': data=catalog()
+            elif route.path == '/v1/metadata': data=metadata(q.get('imdb_id',[''])[0])
             elif route.path == '/v1/search':
                 term=q.get('q',[''])[0][:100].strip()
                 if len(term)<2: data={'items':[]}

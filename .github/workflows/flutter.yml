@@ -125,17 +125,15 @@ jobs:
           generate_release_notes: true
           body: |
             Atualização oficial com a mesma assinatura permanente.
-            - Corrige a área dos controles sobre a navegação do Android.
-            - Categorias de filmes e séries acima de Explore o catálogo.
-            - Catálogo por páginas com cursores independentes por fonte.
-            - Novelasflix e Amyflix como fontes adicionais, com dados publicados pelos sites.
-            - Selos Dublado/Legendado e filtro LGBT+/GL para coleções identificadas pela fonte.
-            - Continuar assistindo com capítulo e posição no player nativo.
-            - Próximo capítulo automático no player nativo e botão em players externos.
-            - Baixar filme ou capítulo quando a fonte disponibiliza MP4 direto.
-            - Sobre > Meus downloads: progresso, abrir e excluir arquivos.
-            - Sino com novidades e acompanhamento de capítulos ao abrir e enquanto o app está em uso.
-            Players externos podem exigir anúncios ou verificação. Não há garantia de download para iframe/HLS.
+            - SuperFlix: filmes, séries, doramas, animes, canais e agenda.
+            - MegaFilmes como fonte adicional com busca e catálogo paginado.
+            - Categoria Anime com A–Z, recentes e novidades próprias.
+            - Capítulos em blocos de até 100 e área segura para alcançar o último item.
+            - Adicionados recentemente na página inicial.
+            - Sinopse, ficha e elenco clicável com atribuição e cache.
+            Notas IMDb/Rotten Tomatoes dependem do backend com OMDB_API_KEY configurada.
+            Elenco lista títulos já indexados no aparelho. Players incorporados dependem da fonte.
+            Downloads e progresso nativo são disponíveis somente para mídia direta compatível.
             Abra Sobre e verifique a atualização para baixar pelo próprio CINESHOW.
     permissions:
       contents: write

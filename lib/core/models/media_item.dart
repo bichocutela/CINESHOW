@@ -25,6 +25,9 @@ class MediaSource {
         'xonados' => 'Xonados',
         'novelasflix' => 'Novelasflix',
         'amyflix' => 'Amyflix',
+        'animesonlinecc' => 'Animes Online',
+        'megafilmes' => 'Mega Filmes',
+        'superflix' => 'SuperFlixAPI',
         _ => provider
       };
 }
@@ -70,7 +73,7 @@ class MediaItem {
       audio: (j['audio'] as String?) ?? '',
       tags: ((j['tags'] as List?) ?? []).whereType<String>().toList(),
       kind: (j['kind'] as String?) ?? 'movie',
-      isSeries: j['kind'] == 'series',
+      isSeries: j['kind'] == 'series' || j['kind'] == 'anime',
       sources: ((j['sources'] as List?) ?? [])
           .map((s) => MediaSource.fromJson(Map<String, dynamic>.from(s as Map)))
           .toList());
@@ -111,6 +114,7 @@ class MediaItem {
   String get typeLabel => switch (kind) {
         'live' => 'Ao vivo',
         'series' => 'Série',
+        'anime' => 'Anime',
         'novela' => 'Novela',
         'reality' => 'Reality',
         _ => 'Filme'
