@@ -61,19 +61,27 @@ List<MediaItem> parseSuperflixCards(String html,
   return result.values.toList();
 }
 
-List<Map<String, dynamic>> parseSuperflixLive(String body, {bool events = false, bool snapshot = false}) {
+List<Map<String, dynamic>> parseSuperflixLive(String body,
+    {bool events = false, bool snapshot = false}) {
   final raw = jsonDecode(body.replaceFirst('\ufeff', '').trim());
-  if (raw is! Map || (!snapshot && raw['success'] != true) ||
-      (snapshot && raw['source'] != superflixOrigin)) throw const FormatException('Invalid live directory');
+  if (raw is! Map ||
+      (!snapshot && raw['success'] != true) ||
+      (snapshot && raw['source'] != superflixOrigin))
+    throw const FormatException('Invalid live directory');
   final data = raw[snapshot ? 'items' : 'data'];
   if (data is! List) throw const FormatException('Missing live items');
   final rows = <Map<String, dynamic>>[];
   for (final item in data.whereType<Map>()) {
     final v = Map<String, dynamic>.from(item);
-    if ([false, 0, '0'].contains(v['is_active']) || [true, 1, '1'].contains(v['is_nsfw']) ||
-        ['adulto', 'adultos', 'xxx'].contains('${v['category']}'.toLowerCase())) continue;
+    if ([false, 0, '0'].contains(v['is_active']) ||
+        [true, 1, '1'].contains(v['is_nsfw']) ||
+        ['adulto', 'adultos', 'xxx'].contains('${v['category']}'.toLowerCase()))
+      continue;
     final uri = Uri.tryParse('${v[events ? 'play_event_url' : 'embed_url']}');
-    if (uri == null || uri.scheme != 'https' || uri.origin != superflixOrigin || uri.userInfo.isNotEmpty ||
+    if (uri == null ||
+        uri.scheme != 'https' ||
+        uri.origin != superflixOrigin ||
+        uri.userInfo.isNotEmpty ||
         !uri.path.startsWith(events ? '/eventos/' : '/canal/')) continue;
     final name = v[events ? 'title' : 'name'];
     if (name is! String || name.trim().isEmpty) continue;
@@ -83,8 +91,10 @@ List<Map<String, dynamic>> parseSuperflixLive(String body, {bool events = false,
 }
 
 class SuperflixService {
-  SuperflixService({SourceSession Function(String)? sessionFactory,
-      Future<String> Function(bool)? snapshotLoader, http.Client Function()? clientFactory})
+  SuperflixService(
+      {SourceSession Function(String)? sessionFactory,
+      Future<String> Function(bool)? snapshotLoader,
+      http.Client Function()? clientFactory})
       : sessionFactory = sessionFactory ?? SourceSession.new,
         snapshotLoader = snapshotLoader,
         clientFactory = clientFactory ?? http.Client.new;
@@ -97,9 +107,12 @@ class SuperflixService {
 
   Future<List<Map<String, dynamic>>> cachedLive({bool events = false}) async {
     try {
-      final body = await rootBundle.loadString('assets/superflix_${events ? 'events' : 'channels'}.json');
+      final body = await rootBundle.loadString(
+          'assets/superflix_${events ? 'events' : 'channels'}.json');
       return _readSnapshot(body, events);
-    } catch (_) { return []; }
+    } catch (_) {
+      return [];
+    }
   }
 
   List<Map<String, dynamic>> _readSnapshot(String body, bool events) {
@@ -111,20 +124,26 @@ class SuperflixService {
   }
 
   Future<List<Map<String, dynamic>>> _snapshot(bool events) async {
-    if (snapshotLoader != null) return _readSnapshot(await snapshotLoader!(events), events);
+    if (snapshotLoader != null)
+      return _readSnapshot(await snapshotLoader!(events), events);
     final client = clientFactory();
     try {
-      final response = await client.get(Uri.parse(
-        'https://raw.githubusercontent.com/bichocutela/CINESHOW/live-data/superflix_${events ? 'events' : 'channels'}.json'))
-        .timeout(const Duration(seconds: 12));
-      if (response.statusCode == 200) return _readSnapshot(utf8.decode(response.bodyBytes), events);
-    } catch (_) { /* A verified bundled directory remains the last fallback. */ }
-    finally { client.close(); }
+      final response = await client
+          .get(Uri.parse(
+              'https://raw.githubusercontent.com/bichocutela/CINESHOW/live-data/superflix_${events ? 'events' : 'channels'}.json'))
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode == 200)
+        return _readSnapshot(utf8.decode(response.bodyBytes), events);
+    } catch (_) {
+      /* A verified bundled directory remains the last fallback. */
+    } finally {
+      client.close();
+    }
     final bundled = await cachedLive(events: events);
-    if (bundled.isEmpty) throw StateError('Não foi possível carregar a lista de reserva.');
+    if (bundled.isEmpty)
+      throw StateError('Não foi possível carregar a lista de reserva.');
     return bundled;
   }
-
 
   Future<({List<MediaItem> items, bool more})> titles(
       {String kind = 'movie',
@@ -155,7 +174,8 @@ class SuperflixService {
     final session = sessionFactory(superflixOrigin);
     lastError = null;
     try {
-      final body = await session.get('/lista?category=${events ? 'eventos' : 'canais'}&format=json&limit=500');
+      final body = await session.get(
+          '/lista?category=${events ? 'eventos' : 'canais'}&format=json&limit=500');
       final rows = parseSuperflixLive(body, events: events);
       usingSnapshot = false;
       lastUpdatedAt = DateTime.now().toUtc();
@@ -163,10 +183,14 @@ class SuperflixService {
     } catch (error) {
       lastError = error is SourceHttpException
           ? 'A fonte respondeu HTTP ${error.status}.'
-          : error is TimeoutException ? 'A consulta à fonte demorou a responder.'
-          : error is FormatException ? 'A fonte retornou uma resposta incompatível.'
-          : 'Não foi possível conectar à fonte nesta rede.';
+          : error is TimeoutException
+              ? 'A consulta à fonte demorou a responder.'
+              : error is FormatException
+                  ? 'A fonte retornou uma resposta incompatível.'
+                  : 'Não foi possível conectar à fonte nesta rede.';
       return await _snapshot(events);
-    } finally { session.close(); }
+    } finally {
+      session.close();
+    }
   }
 }

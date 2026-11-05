@@ -10,7 +10,8 @@ class SourceHttpException implements Exception {
 }
 
 class SourceSession {
-  SourceSession(this.origin, {http.Client? client}) : _client = client ?? http.Client();
+  SourceSession(this.origin, {http.Client? client})
+      : _client = client ?? http.Client();
   final String origin;
   final http.Client _client;
   final Map<String, String> _cookies = {};
@@ -32,7 +33,8 @@ class SourceSession {
                 },
                 body: body))
         .timeout(const Duration(seconds: 20));
-    if (response.statusCode != 200) throw SourceHttpException(response.statusCode);
+    if (response.statusCode != 200)
+      throw SourceHttpException(response.statusCode);
     final cookie = response.headers['set-cookie'];
     if (cookie != null) {
       for (final m

@@ -148,43 +148,70 @@ class TitleInformationService {
     try {
       final sources = <MediaSource>[
         if (source != null) source,
-        ...item.sources.where((v) => v.provider != source?.provider || v.sourceId != source?.sourceId)
+        ...item.sources.where((v) =>
+            v.provider != source?.provider || v.sourceId != source?.sourceId)
       ];
       final pages = await Future.wait(sources.map((entry) async {
-        if (entry.provider == 'superflix' || entry.provider == 'tvaberta') return null;
+        if (entry.provider == 'superflix' || entry.provider == 'tvaberta')
+          return null;
         try {
           final uri = Uri.parse(canonicalSourceUrl(entry.pageUrl));
           if (uri.origin != origins[entry.provider]) return null;
           return (source: entry, html: await read(uri));
-        } catch (_) { return null; }
+        } catch (_) {
+          return null;
+        }
       }));
-      final ids = pages.whereType<({MediaSource source, String html})>()
-          .map((v) => sourceImdbId(v.html)).whereType<String>().toSet();
-      final selectedId = pages.whereType<({MediaSource source, String html})>()
-          .where((v) => v.source == source).map((v) => sourceImdbId(v.html)).whereType<String>().firstOrNull;
+      final ids = pages
+          .whereType<({MediaSource source, String html})>()
+          .map((v) => sourceImdbId(v.html))
+          .whereType<String>()
+          .toSet();
+      final selectedId = pages
+          .whereType<({MediaSource source, String html})>()
+          .where((v) => v.source == source)
+          .map((v) => sourceImdbId(v.html))
+          .whereType<String>()
+          .firstOrNull;
       final confirmedId = selectedId ?? (ids.length == 1 ? ids.single : null);
       result['imdbId'] = confirmedId;
-      for (final page in pages.whereType<({MediaSource source, String html})>()) {
+      for (final page
+          in pages.whereType<({MediaSource source, String html})>()) {
         final pageId = sourceImdbId(page.html);
-        if (confirmedId != null && pageId != null && pageId != confirmedId) continue;
+        if (confirmedId != null && pageId != null && pageId != confirmedId)
+          continue;
         final plot = sourceSynopsis(page.html);
-        if (plot.isNotEmpty && (result['plotSource'] == 'Catálogo' || (result['plot'] as String).isEmpty)) {
+        if (plot.isNotEmpty &&
+            (result['plotSource'] == 'Catálogo' ||
+                (result['plot'] as String).isEmpty)) {
           result['plot'] = plot;
           result['plotSource'] = page.source.label;
         }
         final facts = sourceFacts(page.html);
         final people = publishedCredits(page.html);
-        result['cast'] = mergeCast([...(result['cast'] as List? ?? []), ...(facts['cast'] as List? ?? []), ...(people['cast'] as List? ?? [])]);
-        result['castDetails'] = [...(result['castDetails'] as List? ?? []), ...(people['castDetails'] as List? ?? [])];
+        result['cast'] = mergeCast([
+          ...(result['cast'] as List? ?? []),
+          ...(facts['cast'] as List? ?? []),
+          ...(people['cast'] as List? ?? [])
+        ]);
+        result['castDetails'] = [
+          ...(result['castDetails'] as List? ?? []),
+          ...(people['castDetails'] as List? ?? [])
+        ];
         for (final values in [facts, people]) {
           for (final field in ['director', 'released', 'sourceYear']) {
-            if (result[field] == null && values[field] != null) result[field] = values[field];
+            if (result[field] == null && values[field] != null)
+              result[field] = values[field];
           }
         }
         final score = publishedImdbRating(page.html);
-        if (score != null && confirmedId != null && pageId == confirmedId && result['imdbRating'] == null) {
+        if (score != null &&
+            confirmedId != null &&
+            pageId == confirmedId &&
+            result['imdbRating'] == null) {
           result['imdbRating'] = score;
-          result['imdbRatingSource'] = 'IMDb informado por ${page.source.label}';
+          result['imdbRatingSource'] =
+              'IMDb informado por ${page.source.label}';
         }
       }
       final id = result['imdbId'] as String?;
@@ -204,7 +231,10 @@ class TitleInformationService {
                 result['year'] = row['y'];
                 result['identitySource'] = 'IMDb';
                 if (row['s'] is String) {
-                  result['cast'] = mergeCast([...(result['cast'] as List? ?? []), ...(row['s'] as String).split(',')]);
+                  result['cast'] = mergeCast([
+                    ...(result['cast'] as List? ?? []),
+                    ...(row['s'] as String).split(',')
+                  ]);
                 }
               }
             } catch (_) {}
@@ -229,7 +259,12 @@ class TitleInformationService {
                 'genres'
               ]) {
                 if (data[field] != null && data[field] != '') {
-                  result[field] = field == 'cast' ? mergeCast([...(result['cast'] as List? ?? []), ...(data['cast'] as List? ?? [])]) : data[field];
+                  result[field] = field == 'cast'
+                      ? mergeCast([
+                          ...(result['cast'] as List? ?? []),
+                          ...(data['cast'] as List? ?? [])
+                        ])
+                      : data[field];
                 }
               }
               if ((data['plot'] as String? ?? '').isNotEmpty) {
@@ -261,21 +296,36 @@ class TitleInformationService {
         try {
           final html = await read(Uri.https('www.imdb.com', '/title/$id/'));
           final public = publicImdbTitle(html, id, movie: item.kind == 'movie');
-          result['cast'] = mergeCast([...(result['cast'] as List? ?? []), ...(public['cast'] as List? ?? [])]);
+          result['cast'] = mergeCast([
+            ...(result['cast'] as List? ?? []),
+            ...(public['cast'] as List? ?? [])
+          ]);
           for (final field in ['imdbRating', 'imdbRatingSource', 'director']) {
-            if (public[field] != null && public[field] != '') result[field] = public[field];
+            if (public[field] != null && public[field] != '')
+              result[field] = public[field];
           }
-        } catch (_) { /* Public access may be refused. Keep attributed source data. */ }
+        } catch (_) {
+          /* Public access may be refused. Keep attributed source data. */
+        }
       }
       try {
         final public = await fetchPublicRotten(read, '${result['title']}',
-            (result['year'] as num? ?? item.year).toInt(), movie: item.kind == 'movie');
-        result['cast'] = mergeCast([...(result['cast'] as List? ?? []), ...(public['cast'] as List? ?? [])]);
-        result['castDetails'] = [...(result['castDetails'] as List? ?? []), ...(public['castDetails'] as List? ?? [])];
+            (result['year'] as num? ?? item.year).toInt(),
+            movie: item.kind == 'movie');
+        result['cast'] = mergeCast([
+          ...(result['cast'] as List? ?? []),
+          ...(public['cast'] as List? ?? [])
+        ]);
+        result['castDetails'] = [
+          ...(result['castDetails'] as List? ?? []),
+          ...(public['castDetails'] as List? ?? [])
+        ];
         for (final field in ['rtUrl', 'rtRating', 'rtAudienceRating']) {
           if (public[field] != null) result[field] = public[field];
         }
-      } catch (_) { /* No invented scores when the public page cannot be read. */ }
+      } catch (_) {
+        /* No invented scores when the public page cannot be read. */
+      }
     } finally {
       client.close();
     }

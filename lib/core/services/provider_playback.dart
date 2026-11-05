@@ -92,7 +92,8 @@ class ProviderPlaybackResolver {
         await response.stream.listen((_) {}).cancel();
         final location = response.headers['location'];
         if (location == null) throw StateError('Redirecionamento inválido.');
-        final next = Uri.parse(canonicalPlayerUrl(uri.resolve(location).toString()));
+        final next =
+            Uri.parse(canonicalPlayerUrl(uri.resolve(location).toString()));
         if (!discover && next.origin != initial.origin) {
           throw StateError('A fonte mudou de endereço durante a consulta.');
         }
@@ -137,12 +138,25 @@ class ProviderPlaybackResolver {
     if (origin == null) throw StateError('Fonte não reconhecida.');
     if (source.provider == 'tvaberta') {
       final episodes = await TvAbertaService().episodes(source.sourceId);
-      final chapter = episodes.where((v) => v['page_url'] == pageUrl).firstOrNull;
-      if (chapter == null) throw StateError('Capítulo não publicado por esta fonte.');
-      final headers = {'Referer': '$tvAbertaOrigin/', 'User-Agent': 'CINESHOW/0.6.1'};
-      if (!await _isVideo(pageUrl, headers)) throw StateError('A fonte não entregou mídia compatível para este capítulo.');
-      return [ProviderPlaybackOption(url: pageUrl, label: 'TV Aberta Online · ${chapter['title']}',
-          direct: true, id: 'tvaberta:${source.sourceId}:${chapter['id']}', headers: headers)];
+      final chapter =
+          episodes.where((v) => v['page_url'] == pageUrl).firstOrNull;
+      if (chapter == null)
+        throw StateError('Capítulo não publicado por esta fonte.');
+      final headers = {
+        'Referer': '$tvAbertaOrigin/',
+        'User-Agent': 'CINESHOW/0.6.1'
+      };
+      if (!await _isVideo(pageUrl, headers))
+        throw StateError(
+            'A fonte não entregou mídia compatível para este capítulo.');
+      return [
+        ProviderPlaybackOption(
+            url: pageUrl,
+            label: 'TV Aberta Online · ${chapter['title']}',
+            direct: true,
+            id: 'tvaberta:${source.sourceId}:${chapter['id']}',
+            headers: headers)
+      ];
     }
     if (source.provider == 'superflix') {
       final uri = Uri.parse(pageUrl);
@@ -228,7 +242,7 @@ class ProviderPlaybackResolver {
                 '/wp-json/dooplayer/v2/${selection['post']}/${selection['type']}/${selection['source']}');
         final data = jsonDecode(response) as Map;
         final rawUrl = data['embed_url'] as String?;
-      final url = rawUrl == null ? null : canonicalPlayerUrl(rawUrl);
+        final url = rawUrl == null ? null : canonicalPlayerUrl(rawUrl);
         if (data['type'] != 'iframe' || url == null) return null;
         final uri = Uri.tryParse(url);
         if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
@@ -267,7 +281,12 @@ class ProviderPlaybackResolver {
       ProviderPlaybackOption option) async {
     final migrated = canonicalPlayerUrl(option.url);
     if (migrated != option.url) {
-      option = ProviderPlaybackOption(url: migrated, label: option.label, direct: option.direct, id: option.id, headers: option.headers);
+      option = ProviderPlaybackOption(
+          url: migrated,
+          label: option.label,
+          direct: option.direct,
+          id: option.id,
+          headers: option.headers);
     }
     final uri = Uri.parse(option.url);
     if (uri.host == 'www.blogger.com' || uri.host == 'blogger.com') {

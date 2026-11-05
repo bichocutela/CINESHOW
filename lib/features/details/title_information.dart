@@ -122,19 +122,31 @@ class _TitleInformationState extends State<TitleInformation> {
                 Text('Duração: ${data['runtime']}'),
               if ((data['cast'] as List?)?.isNotEmpty == true) ...[
                 const SizedBox(height: 12),
-                PublishedCast(names: (data['cast'] as List).whereType<String>().toList(),
-                  details: (data['castDetails'] as List? ?? []).whereType<Map>().toList(),
-                  onActor: (actor) => Navigator.push(context, MaterialPageRoute<void>(
-                    builder: (_) => ActorTitlesPage(name: actor, onOpen: widget.onOpenTitle))))
+                PublishedCast(
+                    names: (data['cast'] as List).whereType<String>().toList(),
+                    details: (data['castDetails'] as List? ?? [])
+                        .whereType<Map>()
+                        .toList(),
+                    onActor: (actor) => Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                            builder: (_) => ActorTitlesPage(
+                                name: actor, onOpen: widget.onOpenTitle))))
               ],
               const SizedBox(height: 18),
               const Text('Avaliações',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              TitleRatings(data: data, onImdb: () => _open(imdbUri), onRotten: () => _open(rtUri)),
+              TitleRatings(
+                  data: data,
+                  onImdb: () => _open(imdbUri),
+                  onRotten: () => _open(rtUri)),
               if (data['imdbRatingSource'] != null)
-                Padding(padding: const EdgeInsets.only(top: 6), child: Text('${data['imdbRatingSource']}',
-                    style: const TextStyle(fontSize: 11, color: Colors.white60))),
+                Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text('${data['imdbRatingSource']}',
+                        style: const TextStyle(
+                            fontSize: 11, color: Colors.white60))),
               Wrap(spacing: 8, children: [
                 OutlinedButton.icon(
                     onPressed: () => _open(imdbUri),

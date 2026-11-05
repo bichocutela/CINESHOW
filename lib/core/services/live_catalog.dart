@@ -141,7 +141,8 @@ class LiveCatalog {
     return CatalogResult(filtered, errors);
   }
 
-  Future<List<MediaItem>> _tvAberta({String? query}) => TvAbertaService().novelas(query: query);
+  Future<List<MediaItem>> _tvAberta({String? query}) =>
+      TvAbertaService().novelas(query: query);
 
   Future<List<MediaItem>> _mega({String? query}) async {
     final session = sessionFactory(megaOrigin);
@@ -545,7 +546,8 @@ class LiveCatalog {
   }
 
   Future<List<Map<String, dynamic>>> episodes(MediaSource source) async {
-    if (source.provider == 'tvaberta') return TvAbertaService().episodes(source.sourceId);
+    if (source.provider == 'tvaberta')
+      return TvAbertaService().episodes(source.sourceId);
     if (source.provider == 'superflix') return [];
     if (source.provider == 'animesonlinecc' ||
         source.provider == 'megafilmes') {

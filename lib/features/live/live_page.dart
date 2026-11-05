@@ -297,7 +297,12 @@ class _LivePageState extends State<LivePage> {
           Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: Wrap(spacing: 8, children: [
-                for (final value in ['IPTV', 'SuperFlix', 'Agenda', 'TV Aberta'])
+                for (final value in [
+                  'IPTV',
+                  'SuperFlix',
+                  'Agenda',
+                  'TV Aberta'
+                ])
                   ChoiceChip(
                       label: Text(value),
                       selected: source == value,
@@ -306,8 +311,10 @@ class _LivePageState extends State<LivePage> {
           Expanded(
               child: source == 'IPTV'
                   ? iptv
-                  : source == 'TV Aberta' ? const TvAbertaLiveView() : SuperflixLiveView(
-                      key: ValueKey(source), events: source == 'Agenda'))
+                  : source == 'TV Aberta'
+                      ? const TvAbertaLiveView()
+                      : SuperflixLiveView(
+                          key: ValueKey(source), events: source == 'Agenda'))
         ]));
   }
 }
