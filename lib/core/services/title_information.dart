@@ -9,7 +9,8 @@ import 'actor_catalog.dart';
 const metadataApiBase = String.fromEnvironment('CINESHOW_API_URL');
 
 String? sourceImdbId(String html) {
-  final central = html.split(RegExp(r'<aside\b|class=["\x27]srelacionados')).first;
+  final central =
+      html.split(RegExp(r'<aside\b|class=["\x27]srelacionados')).first;
   final ids = <String>{};
   for (final tag in RegExp(r'<(?:a|iframe)\b[^>]*>').allMatches(central)) {
     final a = attributes(tag[0]!);
@@ -23,13 +24,20 @@ String? sourceImdbId(String html) {
 }
 
 String sourceSynopsis(String html) {
-  final block = RegExp(r'''<div[^>]+class=["'][^"']*\bwp-content\b[^"']*["'][^>]*>(.*?)</div>''',
-      dotAll: true).firstMatch(html)?[1] ?? '';
+  final block =
+      RegExp(r'''<div[^>]+class=["'][^"']*\bwp-content\b[^"']*["'][^>]*>(.*?)</div>''',
+                  dotAll: true)
+              .firstMatch(html)?[1] ??
+          '';
   final paragraphs = <String>[];
-  for (final p in RegExp(r'<p\b[^>]*>(.*?)</p>', dotAll: true).allMatches(block)) {
+  for (final p
+      in RegExp(r'<p\b[^>]*>(.*?)</p>', dotAll: true).allMatches(block)) {
     final text = plain(p[1]!);
-    if (text.length < 30 || p[1]!.contains('<img') ||
-        RegExp(r'^(Onde|Assistir|Que ano|Foi lançado|Confira)\b', caseSensitive: false).hasMatch(text)) continue;
+    if (text.length < 30 ||
+        p[1]!.contains('<img') ||
+        RegExp(r'^(Onde|Assistir|Que ano|Foi lançado|Confira)\b',
+                caseSensitive: false)
+            .hasMatch(text)) continue;
     paragraphs.add(text);
     if (paragraphs.length == 3) break;
   }
@@ -38,7 +46,9 @@ String sourceSynopsis(String html) {
       final a = attributes(tag[0]!);
       if (a['name'] != 'description') continue;
       final text = plain(a['content'] ?? '');
-      if (text.length > 40 && !RegExp(r'^(Assistir|Assista|SuperFlix)', caseSensitive: false).hasMatch(text)) {
+      if (text.length > 40 &&
+          !RegExp(r'^(Assistir|Assista|SuperFlix)', caseSensitive: false)
+              .hasMatch(text)) {
         paragraphs.add(text);
       }
     }
@@ -46,13 +56,19 @@ String sourceSynopsis(String html) {
   return paragraphs.join('\n\n');
 }
 
-
 Map<String, dynamic> sourceFacts(String html) {
   final facts = <String, String>{};
-  for (final row in RegExp(r'<dt\b[^>]*>(.*?)</dt>\s*<dd\b[^>]*>(.*?)</dd>', dotAll: true).allMatches(html)) {
-    facts[plain(row[1]!).toLowerCase().replaceAll(':', '').trim()] = plain(row[2]!);
+  for (final row
+      in RegExp(r'<dt\b[^>]*>(.*?)</dt>\s*<dd\b[^>]*>(.*?)</dd>', dotAll: true)
+          .allMatches(html)) {
+    facts[plain(row[1]!).toLowerCase().replaceAll(':', '').trim()] =
+        plain(row[2]!);
   }
-  final cast = (facts['elenco'] ?? '').split(',').map((v) => v.trim()).where((v) => v.isNotEmpty).toList();
+  final cast = (facts['elenco'] ?? '')
+      .split(',')
+      .map((v) => v.trim())
+      .where((v) => v.isNotEmpty)
+      .toList();
   return {
     if (cast.isNotEmpty) 'cast': cast,
     if ((facts['direção'] ?? '').isNotEmpty) 'director': facts['direção'],
@@ -62,7 +78,8 @@ Map<String, dynamic> sourceFacts(String html) {
 }
 
 class TitleInformationService {
-  TitleInformationService({http.Client Function()? clientFactory, String? apiBase})
+  TitleInformationService(
+      {http.Client Function()? clientFactory, String? apiBase})
       : clientFactory = clientFactory ?? http.Client.new,
         apiBase = apiBase ?? metadataApiBase;
   final http.Client Function() clientFactory;
@@ -72,15 +89,19 @@ class TitleInformationService {
 
   Future<Map<String, dynamic>> load(MediaItem item, MediaSource? source,
       {bool force = false}) {
-    final key = 'cineshow.titleinfo.v1:${source?.provider}:${source?.sourceId}:${item.id}';
+    final key =
+        'cineshow.titleinfo.v1:${source?.provider}:${source?.sourceId}:${item.id}';
     return pending.putIfAbsent(key, () async {
-      try { return await _load(key, item, source, force); }
-      finally { pending.remove(key); }
+      try {
+        return await _load(key, item, source, force);
+      } finally {
+        pending.remove(key);
+      }
     });
   }
 
-  Future<Map<String, dynamic>> _load(String key, MediaItem item,
-      MediaSource? source, bool force) async {
+  Future<Map<String, dynamic>> _load(
+      String key, MediaItem item, MediaSource? source, bool force) async {
     final prefs = await SharedPreferences.getInstance();
     if (!force) {
       try {
@@ -92,33 +113,41 @@ class TitleInformationService {
       } catch (_) {}
     }
     final result = <String, dynamic>{
-      'plot': item.description, 'plotSource': 'Catálogo',
-      'title': item.title, 'year': item.year
+      'plot': item.description,
+      'plotSource': 'Catálogo',
+      'title': item.title,
+      'year': item.year
     };
     final client = clientFactory();
     Future<String> read(Uri uri) async {
-      if (uri.scheme != 'https' || uri.host.isEmpty || uri.userInfo.isNotEmpty) {
+      if (uri.scheme != 'https' ||
+          uri.host.isEmpty ||
+          uri.userInfo.isNotEmpty) {
         throw StateError('Endereço de metadados inválido.');
       }
       final request = http.Request('GET', uri)
         ..headers['User-Agent'] = 'CINESHOW-Metadata/0.6.0';
-      final response = await client.send(request).timeout(const Duration(seconds: 15));
+      final response =
+          await client.send(request).timeout(const Duration(seconds: 15));
       if (response.statusCode != 200) {
         await response.stream.listen((_) {}).cancel();
         throw StateError('Metadados indisponíveis.');
       }
       final bytes = <int>[];
-      await for (final chunk in response.stream.timeout(const Duration(seconds: 15))) {
+      await for (final chunk
+          in response.stream.timeout(const Duration(seconds: 15))) {
         bytes.addAll(chunk);
         if (bytes.length > 2000000) throw StateError('Resposta muito grande.');
       }
       return utf8.decode(bytes, allowMalformed: true);
     }
+
     try {
       if (source != null) {
         try {
           final uri = Uri.parse(canonicalSourceUrl(source.pageUrl));
-          if (uri.origin != origins[source.provider]) throw StateError('Fonte inválida.');
+          if (uri.origin != origins[source.provider])
+            throw StateError('Fonte inválida.');
           final html = await read(uri);
           final plot = sourceSynopsis(html);
           if (plot.isNotEmpty) {
@@ -134,8 +163,8 @@ class TitleInformationService {
         await Future.wait([
           (() async {
             try {
-              final raw = jsonDecode(await read(Uri.https('v2.sg.media-imdb.com',
-                  '/suggestion/t/$id.json'))) as Map;
+              final raw = jsonDecode(await read(Uri.https(
+                  'v2.sg.media-imdb.com', '/suggestion/t/$id.json'))) as Map;
               for (final row in ((raw['d'] as List?) ?? []).whereType<Map>()) {
                 if (row['id'] != id) continue;
                 final qid = '${row['qid']}'.toLowerCase();
@@ -145,8 +174,13 @@ class TitleInformationService {
                 result['title'] = row['l'];
                 result['year'] = row['y'];
                 result['identitySource'] = 'IMDb';
-                if ((result['cast'] as List?)?.isNotEmpty != true && row['s'] is String) {
-                  result['cast'] = (row['s'] as String).split(',').map((v) => v.trim()).where((v) => v.isNotEmpty).toList();
+                if ((result['cast'] as List?)?.isNotEmpty != true &&
+                    row['s'] is String) {
+                  result['cast'] = (row['s'] as String)
+                      .split(',')
+                      .map((v) => v.trim())
+                      .where((v) => v.isNotEmpty)
+                      .toList();
                 }
               }
             } catch (_) {}
@@ -154,7 +188,8 @@ class TitleInformationService {
           (() async {
             if (apiBase.isEmpty) return;
             try {
-              final uri = Uri.parse(apiBase).resolve('/v1/metadata')
+              final uri = Uri.parse(apiBase)
+                  .resolve('/v1/metadata')
                   .replace(queryParameters: {'imdb_id': id});
               final data = jsonDecode(await read(uri)) as Map;
               if (data['imdbId'] != id || data['verified'] != true) return;
@@ -162,8 +197,15 @@ class TitleInformationService {
               if (type != (item.kind == 'movie' ? 'movie' : 'series')) return;
               result['title'] = data['title'];
               result['year'] = data['year'];
-              for (final field in ['cast', 'director', 'released', 'runtime', 'genres']) {
-                if (data[field] != null && data[field] != '') result[field] = data[field];
+              for (final field in [
+                'cast',
+                'director',
+                'released',
+                'runtime',
+                'genres'
+              ]) {
+                if (data[field] != null && data[field] != '')
+                  result[field] = data[field];
               }
               if ((data['plot'] as String? ?? '').isNotEmpty) {
                 result['plot'] = data['plot'];
@@ -176,9 +218,14 @@ class TitleInformationService {
               }
               final rt = int.tryParse('${data['rtRating']}');
               final rtUri = Uri.tryParse('${data['rtUrl']}');
-              if (rt != null && rt >= 0 && rt <= 100 && rtUri != null &&
-                  rtUri.scheme == 'https' && rtUri.host == 'www.rottentomatoes.com' &&
-                  RegExp(r'^/(?:m|tv)/[a-zA-Z0-9_./-]+$').hasMatch(rtUri.path)) {
+              if (rt != null &&
+                  rt >= 0 &&
+                  rt <= 100 &&
+                  rtUri != null &&
+                  rtUri.scheme == 'https' &&
+                  rtUri.host == 'www.rottentomatoes.com' &&
+                  RegExp(r'^/(?:m|tv)/[a-zA-Z0-9_./-]+$')
+                      .hasMatch(rtUri.path)) {
                 result['rtRating'] = rt;
                 result['rtUrl'] = rtUri.toString();
               }
@@ -186,10 +233,14 @@ class TitleInformationService {
           })()
         ]);
       }
-    } finally { client.close(); }
+    } finally {
+      client.close();
+    }
     try {
-      await ActorCatalog().record(item, ((result['cast'] as List?) ?? []).whereType<String>().toList());
-      await prefs.setString(key, jsonEncode({'at': DateTime.now().toIso8601String(), 'data': result}));
+      await ActorCatalog().record(
+          item, ((result['cast'] as List?) ?? []).whereType<String>().toList());
+      await prefs.setString(key,
+          jsonEncode({'at': DateTime.now().toIso8601String(), 'data': result}));
     } catch (_) {
       // Metadata must remain readable if local persistence is unavailable.
     }

@@ -38,4 +38,3 @@ class SourceSession {
 
   void close() => _client.close();
 }
-

@@ -96,7 +96,8 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
   Future<void> _refresh() async {
     try {
       final r = await catalog.refresh();
-      final sorted = await CatalogArrivals().recordAndSort(catalog.mergeItems([...items, ...r.items]));
+      final sorted = await CatalogArrivals()
+          .recordAndSort(catalog.mergeItems([...items, ...r.items]));
       if (!mounted) return;
       setState(() {
         if (r.items.isNotEmpty) {
@@ -232,7 +233,8 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
     if (mounted) setState(() => recent = rows);
   }
 
-  Future<void> _details(MediaItem item, {ContinueEntry? resume, String? initialEpisode}) async {
+  Future<void> _details(MediaItem item,
+      {ContinueEntry? resume, String? initialEpisode}) async {
     await Navigator.push(
         context,
         MaterialPageRoute<void>(
@@ -313,110 +315,138 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
                                             })))
                             ])))),
                 if (filter == 'Anime')
-                  SliverFillRemaining(child: AnimeCategoryView(active: tab == 0,
-                    onOpen: (item, episode) => _details(item, initialEpisode: episode)))
+                  SliverFillRemaining(
+                      child: AnimeCategoryView(
+                          active: tab == 0,
+                          onOpen: (item, episode) =>
+                              _details(item, initialEpisode: episode)))
                 else ...[
-                if (errors.isNotEmpty)
-                  SliverToBoxAdapter(
-                      child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Text(
-                              'Algumas fontes não responderam. Exibindo o catálogo salvo.',
-                              style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant)))),
-                if (recent.isNotEmpty)
-                  SliverToBoxAdapter(
-                      child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Continuar assistindo',
-                                    style: TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold)),
-                                for (final entry in recent.take(5))
-                                  ListTile(
-                                      contentPadding: EdgeInsets.zero,
-                                      leading:
-                                          const Icon(Icons.play_circle_outline),
-                                      title: Text(entry.item.title),
-                                      subtitle: Text(
-                                          '${entry.position.position.inMinutes} min de ${entry.position.duration.inMinutes} min'),
-                                      onTap: () =>
-                                          _details(entry.item, resume: entry))
-                              ]))),
-                if (loading)
-                  const SliverFillRemaining(
-                      child: Center(child: CircularProgressIndicator()))
-                else ...[
-                  if (visible.isNotEmpty)
-                    SliverToBoxAdapter(
-                        child: HeroCard(
-                            item: visible.first,
-                            onOpen: () => _details(visible.first))),
-                  if (category == null && arrivals.isNotEmpty)
-                    SliverToBoxAdapter(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Padding(padding: EdgeInsets.fromLTRB(16, 20, 16, 12),
-                        child: Text('Adicionados recentemente', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold))),
-                      SizedBox(height: 250, child: ListView(scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 16), children: [
-                          for (final item in arrivals.where((i) => filter == 'Todos' || i.typeLabel == filter).take(20))
-                            Padding(padding: const EdgeInsets.only(right: 12), child: SizedBox(width: 135,
-                              child: PosterCard(item: item, onOpen: () => _details(item))))
-                        ]))
-                    ])),
-                  SliverToBoxAdapter(
-                      child: CategoryBar(
-                          section: filter,
-                          selected: category,
-                          onSelected: _selectCategory)),
-                  if (categoryLoading)
-                    const SliverToBoxAdapter(child: LinearProgressIndicator()),
-                  if (!categoryLoading && visible.isEmpty)
-                    const SliverToBoxAdapter(
-                        child: Padding(
-                            padding: EdgeInsets.all(24),
-                            child: Text(
-                                'Nenhum título retornado nesta categoria.'))),
-                  const SliverToBoxAdapter(
-                      child: Padding(
-                          padding: EdgeInsets.fromLTRB(16, 20, 16, 12),
-                          child: Text('Explore o catálogo',
-                              style: TextStyle(
-                                  fontSize: 22, fontWeight: FontWeight.bold)))),
-                  SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                      sliver: SliverGrid(
-                          delegate: SliverChildBuilderDelegate(
-                              (context, index) => PosterCard(
-                                  item: visible[index],
-                                  onOpen: () => _details(visible[index])),
-                              childCount: visible.length),
-                          gridDelegate:
-                              const SliverGridDelegateWithMaxCrossAxisExtent(
-                                  maxCrossAxisExtent: 180,
-                                  childAspectRatio: .58,
-                                  crossAxisSpacing: 12,
-                                  mainAxisSpacing: 16))),
-                  if (filter != 'Novela' && filter != 'Reality')
+                  if (errors.isNotEmpty)
                     SliverToBoxAdapter(
                         child: Padding(
                             padding: const EdgeInsets.all(16),
-                            child: OutlinedButton.icon(
-                                onPressed:
-                                    loadingMore || categoryLoading || !hasMore
-                                        ? null
-                                        : _more,
-                                icon: const Icon(Icons.expand_more),
-                                label: Text(loadingMore
-                                    ? 'Carregando...'
-                                    : hasMore
-                                        ? 'Carregar mais títulos'
-                                        : 'Fim do catálogo disponível'))))
-                ]
+                            child: Text(
+                                'Algumas fontes não responderam. Exibindo o catálogo salvo.',
+                                style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant)))),
+                  if (recent.isNotEmpty)
+                    SliverToBoxAdapter(
+                        child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Continuar assistindo',
+                                      style: TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold)),
+                                  for (final entry in recent.take(5))
+                                    ListTile(
+                                        contentPadding: EdgeInsets.zero,
+                                        leading: const Icon(
+                                            Icons.play_circle_outline),
+                                        title: Text(entry.item.title),
+                                        subtitle: Text(
+                                            '${entry.position.position.inMinutes} min de ${entry.position.duration.inMinutes} min'),
+                                        onTap: () =>
+                                            _details(entry.item, resume: entry))
+                                ]))),
+                  if (loading)
+                    const SliverFillRemaining(
+                        child: Center(child: CircularProgressIndicator()))
+                  else ...[
+                    if (visible.isNotEmpty)
+                      SliverToBoxAdapter(
+                          child: HeroCard(
+                              item: visible.first,
+                              onOpen: () => _details(visible.first))),
+                    if (category == null && arrivals.isNotEmpty)
+                      SliverToBoxAdapter(
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                            const Padding(
+                                padding: EdgeInsets.fromLTRB(16, 20, 16, 12),
+                                child: Text('Adicionados recentemente',
+                                    style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold))),
+                            SizedBox(
+                                height: 250,
+                                child: ListView(
+                                    scrollDirection: Axis.horizontal,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16),
+                                    children: [
+                                      for (final item in arrivals
+                                          .where((i) =>
+                                              filter == 'Todos' ||
+                                              i.typeLabel == filter)
+                                          .take(20))
+                                        Padding(
+                                            padding: const EdgeInsets.only(
+                                                right: 12),
+                                            child: SizedBox(
+                                                width: 135,
+                                                child: PosterCard(
+                                                    item: item,
+                                                    onOpen: () =>
+                                                        _details(item))))
+                                    ]))
+                          ])),
+                    SliverToBoxAdapter(
+                        child: CategoryBar(
+                            section: filter,
+                            selected: category,
+                            onSelected: _selectCategory)),
+                    if (categoryLoading)
+                      const SliverToBoxAdapter(
+                          child: LinearProgressIndicator()),
+                    if (!categoryLoading && visible.isEmpty)
+                      const SliverToBoxAdapter(
+                          child: Padding(
+                              padding: EdgeInsets.all(24),
+                              child: Text(
+                                  'Nenhum título retornado nesta categoria.'))),
+                    const SliverToBoxAdapter(
+                        child: Padding(
+                            padding: EdgeInsets.fromLTRB(16, 20, 16, 12),
+                            child: Text('Explore o catálogo',
+                                style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold)))),
+                    SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                        sliver: SliverGrid(
+                            delegate: SliverChildBuilderDelegate(
+                                (context, index) => PosterCard(
+                                    item: visible[index],
+                                    onOpen: () => _details(visible[index])),
+                                childCount: visible.length),
+                            gridDelegate:
+                                const SliverGridDelegateWithMaxCrossAxisExtent(
+                                    maxCrossAxisExtent: 180,
+                                    childAspectRatio: .58,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 16))),
+                    if (filter != 'Novela' && filter != 'Reality')
+                      SliverToBoxAdapter(
+                          child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: OutlinedButton.icon(
+                                  onPressed:
+                                      loadingMore || categoryLoading || !hasMore
+                                          ? null
+                                          : _more,
+                                  icon: const Icon(Icons.expand_more),
+                                  label: Text(loadingMore
+                                      ? 'Carregando...'
+                                      : hasMore
+                                          ? 'Carregar mais títulos'
+                                          : 'Fim do catálogo disponível'))))
+                  ]
                 ]
               ])),
           ListView(padding: const EdgeInsets.all(16), children: [
@@ -601,7 +631,8 @@ class _DetailsState extends State<DetailsPage> {
       widget.resumeSource ?? widget.item.sources.firstOrNull;
   List<Map<String, dynamic>> episodes = [];
   int episodePage = 0;
-  List<Map<String, dynamic>> get visibleEpisodes => episodeBlock(episodes, episodePage);
+  List<Map<String, dynamic>> get visibleEpisodes =>
+      episodeBlock(episodes, episodePage);
   bool loading = false;
   bool resolving = false;
   String? playbackError;
@@ -677,7 +708,9 @@ class _DetailsState extends State<DetailsPage> {
     if (!mounted) return;
     if (widget.item.kind != 'movie' && url == source.pageUrl) {
       final ordered = orderedChapters(episodes);
-      if (ordered.isNotEmpty) url = chapterUrl(widget.item.kind == 'anime' ? ordered.first : ordered.last);
+      if (ordered.isNotEmpty)
+        url = chapterUrl(
+            widget.item.kind == 'anime' ? ordered.first : ordered.last);
     }
     final resolver = ProviderPlaybackResolver();
     activeResolver = resolver;
@@ -692,7 +725,9 @@ class _DetailsState extends State<DetailsPage> {
       if (!mounted) return;
       ProviderPlaybackOption? choice;
       if (options.length == 1 || auto) {
-        choice = options.where((v) => v.label == preferredPlayer).firstOrNull ?? options.where((v) => v.direct).firstOrNull ?? options.first;
+        choice = options.where((v) => v.label == preferredPlayer).firstOrNull ??
+            options.where((v) => v.direct).firstOrNull ??
+            options.first;
       } else {
         choice = await showModalBottomSheet<ProviderPlaybackOption>(
             context: context,
@@ -724,7 +759,10 @@ class _DetailsState extends State<DetailsPage> {
       }
       final next = nextChapter(episodes, url);
       Future<void> advance(bool fullscreen) => _watchSource(chapterUrl(next!),
-          auto: true, replaceCurrent: true, startFullscreen: fullscreen, preferredPlayer: playable.label);
+          auto: true,
+          replaceCurrent: true,
+          startFullscreen: fullscreen,
+          preferredPlayer: playable.label);
       final media = playable.media(widget.item);
       if (playable.direct) {
         try {
@@ -777,7 +815,9 @@ class _DetailsState extends State<DetailsPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: Text(widget.item.title), actions: [
-        if (widget.item.kind != 'movie' && widget.item.kind != 'anime' && selected != null)
+        if (widget.item.kind != 'movie' &&
+            widget.item.kind != 'anime' &&
+            selected != null)
           IconButton(
               tooltip: following
                   ? 'Parar de acompanhar capítulos'
@@ -799,123 +839,146 @@ class _DetailsState extends State<DetailsPage> {
                 }
               })
       ]),
-      body: SafeArea(top: false, child: ListView(padding: const EdgeInsets.fromLTRB(20, 20, 20, 32), children: [
-        SizedBox(
-            height: 260,
-            child: Center(
-                child: SizedBox(width: 180, child: Cover(item: widget.item)))),
-        const SizedBox(height: 20),
-        Text(widget.item.title,
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
-        Text(
-            '${widget.item.typeLabel}${widget.item.year > 0 ? ' · ${widget.item.year}' : ''}',
-            style: const TextStyle(color: Colors.white60)),
-        const SizedBox(height: 16),
-        Wrap(spacing: 8, children: [
-          for (final s in widget.item.sources)
-            ChoiceChip(
-                label: Text(s.label),
-                selected: s == selected,
-                onSelected: loading || resolving
-                    ? null
-                    : (_) {
-                        setState(() => selected = s);
-                        if (widget.item.kind != 'movie' && selected != null) {
-                          _episodes();
-                        }
-                      })
-        ]),
-        const SizedBox(height: 12),
-        if (widget.item.streamUrl?.isNotEmpty == true)
-          FilledButton.icon(
-              onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                      builder: (_) => PlayerPage(media: widget.item))),
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('Assistir no CINESHOW')),
-        if (widget.item.streamUrl?.isNotEmpty != true && selected != null)
-          FilledButton.icon(
-              onPressed:
-                  resolving ? null : () => _watchSource(selected!.pageUrl),
-              icon: const Icon(Icons.play_arrow),
-              label:
-                  Text(resolving ? 'Localizando vídeo...' : 'Assistir no app')),
-        if (selected != null && widget.item.streamUrl?.isNotEmpty != true)
-          OutlinedButton.icon(
-              onPressed: resolving
-                  ? null
-                  : () => _watchSource(selected!.pageUrl, download: true),
-              icon: const Icon(Icons.download_outlined),
-              label: Text(widget.item.kind == 'movie'
-                  ? 'Baixar filme'
-                  : 'Baixar capítulo')),
-        if (widget.item.streamUrl?.isNotEmpty == true)
-          OutlinedButton.icon(
-              onPressed: () => downloadMedia(context, widget.item),
-              icon: const Icon(Icons.download_outlined),
-              label: const Text('Baixar vídeo')),
-        if (resolving) const LinearProgressIndicator(),
-        if (playbackError != null)
-          Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(playbackError!)),
-        if (selected != null)
-          OutlinedButton.icon(
-              onPressed: () => _open(selected!.pageUrl),
-              icon: const Icon(Icons.open_in_new),
-              label: const Text('Abrir na fonte')),
-        OutlinedButton.icon(
-            onPressed: () {
-              widget.onFavorite();
-              setState(() => favorite = !favorite);
-            },
-            icon: Icon(favorite ? Icons.bookmark : Icons.bookmark_border),
-            label:
-                Text(favorite ? 'Na minha lista' : 'Adicionar à minha lista')),
-        TitleInformation(item: widget.item, source: selected, onOpenTitle: widget.onOpenTitle),
-        if (widget.item.kind != 'movie' && selected != null) ...[
-          const SizedBox(height: 20),
-          Row(children: [
-            const Expanded(
-                child: Text('Capítulos e episódios',
-                    style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
-            IconButton(
-                onPressed: loading ? null : _episodes,
-                icon: const Icon(Icons.refresh))
-          ]),
-          if (loading)
-            const Center(
-                child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: CircularProgressIndicator())),
-          if (error != null)
-            Text(error!, style: const TextStyle(color: Colors.white60)),
-          if (!loading && error == null && episodes.isEmpty)
-            const Text('Consulte a lista completa na fonte original.'),
-          EpisodePagination(total: episodes.length, page: episodePage, onChanged: (value) => setState(() => episodePage = value)),
-          for (final e in visibleEpisodes)
-            ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(e['title'] as String),
-                trailing: PopupMenuButton<String>(
-                    tooltip: 'Opções do capítulo',
-                    onSelected: (action) => _watchSource(
-                        (e['page_url'] as String?) ??
+      body: SafeArea(
+          top: false,
+          child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+              children: [
+                SizedBox(
+                    height: 260,
+                    child: Center(
+                        child: SizedBox(
+                            width: 180, child: Cover(item: widget.item)))),
+                const SizedBox(height: 20),
+                Text(widget.item.title,
+                    style: const TextStyle(
+                        fontSize: 28, fontWeight: FontWeight.w800)),
+                Text(
+                    '${widget.item.typeLabel}${widget.item.year > 0 ? ' · ${widget.item.year}' : ''}',
+                    style: const TextStyle(color: Colors.white60)),
+                const SizedBox(height: 16),
+                Wrap(spacing: 8, children: [
+                  for (final s in widget.item.sources)
+                    ChoiceChip(
+                        label: Text(s.label),
+                        selected: s == selected,
+                        onSelected: loading || resolving
+                            ? null
+                            : (_) {
+                                setState(() => selected = s);
+                                if (widget.item.kind != 'movie' &&
+                                    selected != null) {
+                                  _episodes();
+                                }
+                              })
+                ]),
+                const SizedBox(height: 12),
+                if (widget.item.streamUrl?.isNotEmpty == true)
+                  FilledButton.icon(
+                      onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                              builder: (_) => PlayerPage(media: widget.item))),
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text('Assistir no CINESHOW')),
+                if (widget.item.streamUrl?.isNotEmpty != true &&
+                    selected != null)
+                  FilledButton.icon(
+                      onPressed: resolving
+                          ? null
+                          : () => _watchSource(selected!.pageUrl),
+                      icon: const Icon(Icons.play_arrow),
+                      label: Text(resolving
+                          ? 'Localizando vídeo...'
+                          : 'Assistir no app')),
+                if (selected != null &&
+                    widget.item.streamUrl?.isNotEmpty != true)
+                  OutlinedButton.icon(
+                      onPressed: resolving
+                          ? null
+                          : () =>
+                              _watchSource(selected!.pageUrl, download: true),
+                      icon: const Icon(Icons.download_outlined),
+                      label: Text(widget.item.kind == 'movie'
+                          ? 'Baixar filme'
+                          : 'Baixar capítulo')),
+                if (widget.item.streamUrl?.isNotEmpty == true)
+                  OutlinedButton.icon(
+                      onPressed: () => downloadMedia(context, widget.item),
+                      icon: const Icon(Icons.download_outlined),
+                      label: const Text('Baixar vídeo')),
+                if (resolving) const LinearProgressIndicator(),
+                if (playbackError != null)
+                  Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(playbackError!)),
+                if (selected != null)
+                  OutlinedButton.icon(
+                      onPressed: () => _open(selected!.pageUrl),
+                      icon: const Icon(Icons.open_in_new),
+                      label: const Text('Abrir na fonte')),
+                OutlinedButton.icon(
+                    onPressed: () {
+                      widget.onFavorite();
+                      setState(() => favorite = !favorite);
+                    },
+                    icon:
+                        Icon(favorite ? Icons.bookmark : Icons.bookmark_border),
+                    label: Text(favorite
+                        ? 'Na minha lista'
+                        : 'Adicionar à minha lista')),
+                TitleInformation(
+                    item: widget.item,
+                    source: selected,
+                    onOpenTitle: widget.onOpenTitle),
+                if (widget.item.kind != 'movie' && selected != null) ...[
+                  const SizedBox(height: 20),
+                  Row(children: [
+                    const Expanded(
+                        child: Text('Capítulos e episódios',
+                            style: TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.bold))),
+                    IconButton(
+                        onPressed: loading ? null : _episodes,
+                        icon: const Icon(Icons.refresh))
+                  ]),
+                  if (loading)
+                    const Center(
+                        child: Padding(
+                            padding: EdgeInsets.all(20),
+                            child: CircularProgressIndicator())),
+                  if (error != null)
+                    Text(error!, style: const TextStyle(color: Colors.white60)),
+                  if (!loading && error == null && episodes.isEmpty)
+                    const Text('Consulte a lista completa na fonte original.'),
+                  EpisodePagination(
+                      total: episodes.length,
+                      page: episodePage,
+                      onChanged: (value) =>
+                          setState(() => episodePage = value)),
+                  for (final e in visibleEpisodes)
+                    ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(e['title'] as String),
+                        trailing: PopupMenuButton<String>(
+                            tooltip: 'Opções do capítulo',
+                            onSelected: (action) => _watchSource(
+                                (e['page_url'] as String?) ??
+                                    (e['player_path'] as String?) ??
+                                    selected!.pageUrl,
+                                download: action == 'download'),
+                            itemBuilder: (_) => const [
+                                  PopupMenuItem(
+                                      value: 'play', child: Text('Assistir')),
+                                  PopupMenuItem(
+                                      value: 'download',
+                                      child: Text('Baixar capítulo'))
+                                ]),
+                        onTap: () => _watchSource((e['page_url'] as String?) ??
                             (e['player_path'] as String?) ??
-                            selected!.pageUrl,
-                        download: action == 'download'),
-                    itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'play', child: Text('Assistir')),
-                          PopupMenuItem(
-                              value: 'download', child: Text('Baixar capítulo'))
-                        ]),
-                onTap: () => _watchSource((e['page_url'] as String?) ??
-                    (e['player_path'] as String?) ??
-                    selected!.pageUrl))
-        ]
-      ])));
+                            selected!.pageUrl))
+                ]
+              ])));
 }
 
 class SearchPage extends StatefulWidget {

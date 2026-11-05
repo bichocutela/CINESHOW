@@ -20,7 +20,6 @@ export 'source_origins.dart' show origins;
 
 const apiBase = String.fromEnvironment('CINESHOW_API_URL');
 
-
 class CatalogResult {
   const CatalogResult(this.items, this.errors);
   final List<MediaItem> items;
@@ -88,8 +87,9 @@ class LiveCatalog {
           // Keep available sources if Amyflix is temporarily unavailable.
         }
         for (final extra in [_mega, _superflix]) {
-          try { items = _merge([...items, ...await extra(query: query)]); }
-          catch (_) {}
+          try {
+            items = _merge([...items, ...await extra(query: query)]);
+          } catch (_) {}
         }
         if (query == null) await _save(items);
         return CatalogResult(items, []);
@@ -98,7 +98,9 @@ class LiveCatalog {
       }
     }
     final errors = <String>[];
-    final batches = await Future.wait(origins.entries.where((e) => e.key != 'animesonlinecc').map((entry) async {
+    final batches = await Future.wait(origins.entries
+        .where((e) => e.key != 'animesonlinecc')
+        .map((entry) async {
       final session = sessionFactory(entry.value);
       try {
         if (entry.key == 'megafilmes') return await _mega(query: query);
@@ -140,18 +142,25 @@ class LiveCatalog {
   Future<List<MediaItem>> _mega({String? query}) async {
     final session = sessionFactory(megaOrigin);
     try {
-      final html = await session.get(query == null ? '/' : '/search?q=${Uri.encodeQueryComponent(query)}');
+      final html = await session.get(
+          query == null ? '/' : '/search?q=${Uri.encodeQueryComponent(query)}');
       return parseMegaCards(html).where((v) => v.kind != 'anime').toList();
-    } finally { session.close(); }
+    } finally {
+      session.close();
+    }
   }
 
   Future<List<MediaItem>> _superflix({String? query}) async {
     final batches = await Future.wait([
       SuperflixService().titles(kind: 'movie', query: query ?? ''),
       SuperflixService().titles(kind: 'series', query: query ?? ''),
-      SuperflixService().titles(kind: 'series', dorama: true, query: query ?? '')
+      SuperflixService()
+          .titles(kind: 'series', dorama: true, query: query ?? '')
     ]);
-    return batches.expand((v) => v.items).where((v) => v.kind != 'anime').toList();
+    return batches
+        .expand((v) => v.items)
+        .where((v) => v.kind != 'anime')
+        .toList();
   }
 
   Future<List<MediaItem>> _amyflix({String? query}) async {
@@ -241,7 +250,13 @@ class LiveCatalog {
     if (reset) feeds.remove(key);
     final feed = feeds.putIfAbsent(key, _CatalogFeed.new);
     final paths = <String, String>{};
-    for (final provider in ['rtfilmes', 'tontons', 'amyflix', 'megafilmes', 'superflix']) {
+    for (final provider in [
+      'rtfilmes',
+      'tontons',
+      'amyflix',
+      'megafilmes',
+      'superflix'
+    ]) {
       if (slug == 'amy-gl') {
         if (provider == 'amyflix') {
           if (kind != 'series') {
@@ -255,16 +270,24 @@ class LiveCatalog {
       } else if (slug != null) {
         if (provider == 'amyflix' || provider == 'superflix') continue;
         if (provider == 'megafilmes') {
-          paths['$provider:category'] = '/categoria/${slug == 'thriller' ? 'suspense' : slug}';
+          paths['$provider:category'] =
+              '/categoria/${slug == 'thriller' ? 'suspense' : slug}';
         } else {
           paths['$provider:category'] = '/melhores/$slug/';
         }
       } else {
-        if (kind != 'series') paths['$provider:movie'] =
-            provider == 'megafilmes' || provider == 'superflix' ? '/filmes' : '/filme/';
-        if (kind != 'movie') paths['$provider:series'] =
-            provider == 'megafilmes' || provider == 'superflix' ? '/series' : '/serie/';
-        if (kind != 'movie' && provider == 'superflix') paths['superflix:dorama'] = '/doramas';
+        if (kind != 'series')
+          paths['$provider:movie'] =
+              provider == 'megafilmes' || provider == 'superflix'
+                  ? '/filmes'
+                  : '/filme/';
+        if (kind != 'movie')
+          paths['$provider:series'] =
+              provider == 'megafilmes' || provider == 'superflix'
+                  ? '/series'
+                  : '/serie/';
+        if (kind != 'movie' && provider == 'superflix')
+          paths['superflix:dorama'] = '/doramas';
       }
     }
     final errors = <String>[];
@@ -282,15 +305,23 @@ class LiveCatalog {
       final session = sessionFactory(origins[provider]!);
       try {
         final special = provider == 'megafilmes' || provider == 'superflix';
-        final path = special ? '${entry.value}?page=$page&sort=recent' : '${entry.value}$pagination$query';
+        final path = special
+            ? '${entry.value}?page=$page&sort=recent'
+            : '${entry.value}$pagination$query';
         final html = await session.get(path);
-        final parsed = provider == 'megafilmes' ? parseMegaCards(html)
-            : provider == 'superflix' ? parseSuperflixCards(html,
-                kind: kind, dorama: entry.key.endsWith(':dorama'))
-            : _cards(html, provider, thematic: slug == 'amy-gl');
-        final items = parsed.where((i) => i.kind != 'anime' && (kind == null || i.kind == kind)).toList();
+        final parsed = provider == 'megafilmes'
+            ? parseMegaCards(html)
+            : provider == 'superflix'
+                ? parseSuperflixCards(html,
+                    kind: kind, dorama: entry.key.endsWith(':dorama'))
+                : _cards(html, provider, thematic: slug == 'amy-gl');
+        final items = parsed
+            .where((i) => i.kind != 'anime' && (kind == null || i.kind == kind))
+            .toList();
         feed.pages[entry.key] = page + 1;
-        final next = special ? hasCatalogNextPage(html, page) : html.contains('/page/${page + 1}/');
+        final next = special
+            ? hasCatalogNextPage(html, page)
+            : html.contains('/page/${page + 1}/');
         if (!next) feed.ended.add(entry.key);
         return items;
       } catch (_) {
@@ -508,13 +539,17 @@ class LiveCatalog {
 
   Future<List<Map<String, dynamic>>> episodes(MediaSource source) async {
     if (source.provider == 'superflix') return [];
-    if (source.provider == 'animesonlinecc' || source.provider == 'megafilmes') {
+    if (source.provider == 'animesonlinecc' ||
+        source.provider == 'megafilmes') {
       final session = sessionFactory(origins[source.provider]!);
       try {
         final html = await session.get(source.pageUrl);
         return source.provider == 'animesonlinecc'
-            ? await compute(parseAnimeEpisodes, html) : parseMegaEpisodes(html);
-      } finally { session.close(); }
+            ? await compute(parseAnimeEpisodes, html)
+            : parseMegaEpisodes(html);
+      } finally {
+        session.close();
+      }
     }
     if (source.provider == 'novelasflix') {
       final session = sessionFactory(novelasflixOrigin);
