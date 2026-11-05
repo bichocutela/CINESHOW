@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/media_item.dart';
 import 'live_catalog.dart' show attributes, plain;
 import 'source_origins.dart';
+import 'novelasflix.dart';
 
 class ProviderPlaybackOption {
   const ProviderPlaybackOption(
@@ -57,7 +58,7 @@ class ProviderPlaybackResolver {
       final request = http.Request(body == null ? 'GET' : 'POST', uri)
         ..followRedirects = false
         ..headers.addAll({
-          'User-Agent': 'CINESHOW/0.4.1',
+          'User-Agent': 'CINESHOW/0.5.0',
           if (referer != null) 'Referer': referer,
           if (xhr) 'X-Requested-With': 'XMLHttpRequest',
           if (cookies[uri.host]?.isNotEmpty == true)
@@ -126,6 +127,9 @@ class ProviderPlaybackResolver {
       {required String pageUrl}) async {
     final origin = origins[source.provider];
     if (origin == null) throw StateError('Fonte não reconhecida.');
+    if (source.provider == 'novelasflix') {
+      return _novelasflix(source, pageUrl);
+    }
     if (source.provider == 'xonados') {
       await _text(Uri.parse('$origin/'), discover: true);
       return _xonados(source, pageUrl);
@@ -230,7 +234,7 @@ class ProviderPlaybackResolver {
         }
         final headers = {
           'Referer': '${uri.origin}/',
-          'User-Agent': 'CINESHOW/0.4.1'
+          'User-Agent': 'CINESHOW/0.5.0'
         };
         final direct = resources['iframe'] != true;
         if (direct && !await _isVideo(value!, headers)) continue;
@@ -245,6 +249,55 @@ class ProviderPlaybackResolver {
     } catch (_) {
       return [option];
     }
+  }
+
+  Future<List<ProviderPlaybackOption>> _novelasflix(
+      MediaSource source, String pageUrl) async {
+    final path = Uri.parse(pageUrl);
+    if (!path.path.startsWith('/novela/') && !path.path.startsWith('/episodio/')) {
+      throw StateError('Endereço de capítulo inválido.');
+    }
+    var episodePath = path.path;
+    var html = await _text(Uri.parse(novelasflixOrigin).replace(path: path.path),
+        discover: true);
+    if (path.path.startsWith('/novela/')) {
+      final episodes = parseNovelasflixEpisodes(html);
+      if (episodes.isEmpty) throw StateError('Nenhum capítulo localizado nesta fonte.');
+      episodePath = Uri.parse(episodes.last['page_url'] as String).path;
+      html = await _get(episodePath);
+    }
+    final options = <ProviderPlaybackOption>[];
+    final headers = {'Referer': '$novelasflixOrigin/', 'User-Agent': 'CINESHOW/0.5.0'};
+    Future<void> mediaIn(String markup, Uri base) async {
+      for (final tag in RegExp(r'<(?:source|video)\b[^>]*>').allMatches(markup)) {
+        final raw = attributes(tag[0]!)['src'];
+        if (raw == null) continue;
+        final uri = base.resolve(raw);
+        if (uri.scheme != 'https' || !await _isVideo(uri.toString(), headers)) continue;
+        options.add(ProviderPlaybackOption(url: uri.toString(),
+            label: 'Novelasflix · vídeo direto', direct: true,
+            id: 'novelasflix:$episodePath', headers: headers));
+      }
+    }
+    await mediaIn(html, Uri.parse(novelasflixOrigin));
+    for (final frame in RegExp(r'<iframe\b[^>]*>').allMatches(html)) {
+      final raw = attributes(frame[0]!)['src'];
+      if (raw == null) continue;
+      final uri = Uri.parse(novelasflixOrigin).resolve(raw);
+      if (uri.scheme != 'https' || uri.host != 'novelascdn.link') continue;
+      try {
+        await mediaIn(await _text(uri, referer: '$novelasflixOrigin/'), uri);
+      } catch (_) {
+        // The original published iframe remains an explicit alternative.
+      }
+      options.add(ProviderPlaybackOption(url: uri.toString(),
+          label: 'Novelasflix · player da fonte', direct: false,
+          id: 'novelasflix:$episodePath', headers: headers));
+    }
+    if (options.isEmpty) throw StateError('A fonte não retornou um player compatível.');
+    final unique = <String, ProviderPlaybackOption>{};
+    for (final option in options) { unique.putIfAbsent(option.url, () => option); }
+    return unique.values.toList();
   }
 
   Future<List<ProviderPlaybackOption>> _xonados(
@@ -312,7 +365,7 @@ class ProviderPlaybackResolver {
     final result = <ProviderPlaybackOption>[];
     final date = episodeUrl.queryParameters['date']!;
     for (final url in urls.take(3)) {
-      final headers = {'Referer': '$_origin/', 'User-Agent': 'CINESHOW/0.4.1'};
+      final headers = {'Referer': '$_origin/', 'User-Agent': 'CINESHOW/0.5.0'};
       if (!await _isVideo(url, headers)) continue;
       result.add(ProviderPlaybackOption(
           url: url,

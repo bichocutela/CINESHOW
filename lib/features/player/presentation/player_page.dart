@@ -5,6 +5,7 @@ import 'package:video_player/video_player.dart';
 import '../../../core/models/media_item.dart';
 import '../../../core/services/playback_gateway.dart';
 import '../widgets/playback_controls.dart';
+import '../../downloads/downloads_page.dart';
 
 class PlayerPage extends StatefulWidget {
   const PlayerPage({super.key, required this.media, this.playbackGateway});
@@ -157,6 +158,12 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
             : AppBar(
                 title: Text(widget.media.title),
                 backgroundColor: Colors.black,
+                actions: [
+                  if (!live) IconButton(
+                      tooltip: 'Baixar vídeo',
+                      onPressed: () => downloadMedia(context, widget.media),
+                      icon: const Icon(Icons.download_outlined))
+                ],
               ),
         body: SafeArea(
           child: Center(

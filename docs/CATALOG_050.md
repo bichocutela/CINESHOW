@@ -1,0 +1,10 @@
+# Catálogo, fontes, downloads e novidades — 0.5.0
+
+- Categorias acima de Explore o catálogo consultam as páginas de gênero publicadas pelas fontes. Filme usa post_type=movies e Série usa post_type=tvshows. Como a fonte pode incluir cards de outro tipo, o app também filtra o resultado por tipo.
+- Arquivos completos de filmes e séries são navegáveis por páginas (/filme/page/N/, /serie/page/N/). Cada fonte tem cursor próprio: falha não avança sua página. Carregar mais mantém títulos existentes, reúne fontes do mesmo título e informa o fim disponível. Não baixa todos os metadados ou vídeos ao abrir o app.
+- Novelasflix: /api/search?search=termo foi confirmado com resposta JSON para Quem Ama Cuida, título 233, capa fornecida no resultado. A página /novela/quem-ama-cuida publicou /episodio/quem-ama-cuida-1x1, que publicou iframe https://novelascdn.link/serie/306956/1/1.
+- A capa vem de poster/data-src publicado, sem inventar nomes de arquivos. O novo catálogo inclui busca pelos títulos já conhecidos no Xonados para reunir fontes e recuperar suas capas.
+- O player do CDN carregou HTML e script serie.js; não foi confirmado MP4/HLS direto desse provedor. A integração mantém o iframe como player externo. Só declara vídeo direto se encontrar source explícito e validar bytes.
+- Download é iniciado pelo usuário e só aceita MP4 direto validado por Range. Iframes e playlists HLS não são salvos como MP4. DownloadManager do Android mantém fila e notificações, com progresso e exclusão em Sobre > Meus downloads. Os arquivos são específicos do app, sobrevivem às atualizações e são removidos ao desinstalar. Abrir concluído usa reprodutor compatível do Android.
+- Sino de novidades persiste os eventos e mostra nome/tipo ou fonte/capítulo. Primeira sincronização é silenciosa. Acompanhar capítulos é opt-in nos detalhes, até 10 títulos. Verificação ao abrir/retomar e a cada 5 minutos enquanto aberto. Não implementa push instantâneo nem consulta em segundo plano com o app fechado.
+- Catálogos e capítulos continuam sujeitos a mudanças e indisponibilidade das fontes. Testes automatizados não equivalem a reprodução/download em aparelho Android real.

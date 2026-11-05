@@ -55,6 +55,68 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cineshow/media_downloads")
+            .setMethodCallHandler { call, result ->
+                try {
+                    when (call.method) {
+                        "start" -> {
+                            val mediaId = call.argument<String>("mediaId") ?: error("Título ausente")
+                            val url = call.argument<String>("url") ?: error("Vídeo ausente")
+                            val title = (call.argument<String>("title") ?: "Vídeo").take(200)
+                            val uri = Uri.parse(url)
+                            require(uri.scheme == "https" && !uri.host.isNullOrEmpty() && uri.userInfo == null)
+                            val records = mediaRecords()
+                            val existing = records.firstOrNull { it.optString("mediaId") == mediaId }
+                            if (existing != null && mediaStatus(existing.getLong("id"))["state"] != "failed") {
+                                result.success(existing.getLong("id"))
+                            } else {
+                                if (existing != null) {
+                                    downloads.remove(existing.getLong("id"))
+                                    records.remove(existing)
+                                }
+                                val safe = title.replace(Regex("[^a-zA-Z0-9._ -]"), "_").take(100)
+                                val name = "${System.currentTimeMillis()}-$safe.mp4"
+                                File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "media").mkdirs()
+                                val request = DownloadManager.Request(uri)
+                                    .setTitle(title).setDescription("Download CINESHOW")
+                                    .setMimeType("video/mp4")
+                                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                                    .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "media/$name")
+                                val headers = call.argument<Map<String, String>>("headers") ?: emptyMap()
+                                headers.filterKeys { it.equals("Referer", true) || it.equals("User-Agent", true) }
+                                    .forEach { (key, value) -> request.addRequestHeader(key, value) }
+                                val id = downloads.enqueue(request)
+                                records.add(org.json.JSONObject().put("id", id).put("title", title).put("mediaId", mediaId))
+                                saveMediaRecords(records)
+                                result.success(id)
+                            }
+                        }
+                        "list" -> result.success(mediaRecords().map {
+                            mediaStatus(it.getLong("id")) + mapOf("id" to it.getLong("id"), "title" to it.getString("title"))
+                        })
+                        "remove" -> {
+                            val id = call.argument<Number>("id")?.toLong() ?: error("Download ausente")
+                            val records = mediaRecords()
+                            require(records.any { it.getLong("id") == id })
+                            downloads.remove(id)
+                            saveMediaRecords(records.filter { it.getLong("id") != id })
+                            result.success(null)
+                        }
+                        "open" -> {
+                            val id = call.argument<Number>("id")?.toLong() ?: error("Download ausente")
+                            require(mediaRecords().any { it.getLong("id") == id })
+                            check(mediaStatus(id)["state"] == "ready") { "Download ainda não concluído" }
+                            val uri = downloads.getUriForDownloadedFile(id) ?: error("Arquivo indisponível")
+                            startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, "video/mp4")
+                                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+                            result.success(null)
+                        }
+                        else -> result.notImplemented()
+                    }
+                } catch (e: Exception) {
+                    result.error("MEDIA_DOWNLOAD", e.message ?: "Falha no download", null)
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cineshow/updates")
             .setMethodCallHandler { call, result ->
                 try {
@@ -93,6 +155,32 @@ class MainActivity : FlutterActivity() {
                     result.error("UPDATE", e.message ?: "Falha na atualização", null)
                 }
             }
+    }
+
+    private fun mediaRecords(): MutableList<org.json.JSONObject> {
+        val raw = getSharedPreferences("cineshow_media", MODE_PRIVATE).getString("records", "[]")
+        val array = org.json.JSONArray(raw ?: "[]")
+        return (0 until array.length()).map { array.getJSONObject(it) }.toMutableList()
+    }
+
+    private fun saveMediaRecords(records: List<org.json.JSONObject>) {
+        getSharedPreferences("cineshow_media", MODE_PRIVATE).edit()
+            .putString("records", org.json.JSONArray(records).toString()).apply()
+    }
+
+    private fun mediaStatus(id: Long): Map<String, Any> {
+        downloads.query(DownloadManager.Query().setFilterById(id)).use { cursor ->
+            if (cursor == null || !cursor.moveToFirst()) return mapOf("state" to "failed", "bytes" to 0L, "total" to 0L)
+            fun value(column: String) = cursor.getLong(cursor.getColumnIndexOrThrow(column))
+            val state = when (value(DownloadManager.COLUMN_STATUS).toInt()) {
+                DownloadManager.STATUS_SUCCESSFUL -> "ready"
+                DownloadManager.STATUS_FAILED -> "failed"
+                DownloadManager.STATUS_PAUSED -> "paused"
+                else -> "downloading"
+            }
+            return mapOf("state" to state, "bytes" to value(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR),
+                "total" to value(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+        }
     }
 
     private fun downloadStatus(): Map<String, Any> {

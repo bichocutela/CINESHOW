@@ -5,20 +5,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/media_item.dart';
 import 'poster_sources.dart';
 import 'source_origins.dart';
+import 'source_html.dart';
+import 'novelasflix.dart';
+import 'catalog_categories.dart';
+export 'source_html.dart' show plain, attributes;
 export 'source_origins.dart' show origins;
 
 const apiBase = String.fromEnvironment('CINESHOW_API_URL');
 
-String plain(String s) => s
-    .replaceAll(RegExp('<[^>]+>'), '')
-    .replaceAll('&amp;', '&')
-    .replaceAll('&#8211;', '–')
-    .trim();
-Map<String, String> attributes(String s) => {
-      for (final m in RegExp(r'''([\w-]+)\s*=\s*(["'])(.*?)\2''', dotAll: true)
-          .allMatches(s))
-        m[1]!: m[3]!.replaceAll('&amp;', '&')
-    };
 
 class SourceSession {
   SourceSession(this.origin);
@@ -62,8 +56,26 @@ class CatalogResult {
   final List<String> errors;
 }
 
+class CatalogPage {
+  const CatalogPage(this.items, this.hasMore, this.errors);
+  final List<MediaItem> items;
+  final bool hasMore;
+  final List<String> errors;
+}
+
+class _CatalogFeed {
+  final items = <MediaItem>[];
+  final pages = <String, int>{};
+  final ended = <String>{};
+}
+
 class LiveCatalog {
+  LiveCatalog({SourceSession Function(String)? sessionFactory})
+      : sessionFactory = sessionFactory ?? SourceSession.new;
+  final SourceSession Function(String) sessionFactory;
+  final feeds = <String, _CatalogFeed>{};
   final _key = 'cineshow.catalog.v1';
+  final categoryCache = <String, CatalogResult>{};
   Future<List<MediaItem>> cached() async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getString(_key);
@@ -90,9 +102,14 @@ class LiveCatalog {
             .timeout(const Duration(seconds: 25));
         if (r.statusCode != 200) throw StateError('API indisponível');
         final j = jsonDecode(r.body) as Map;
-        final items = (j['items'] as List)
+        var items = (j['items'] as List)
             .map((v) => MediaItem.fromJson(Map<String, dynamic>.from(v as Map)))
             .toList();
+        try {
+          items = _merge([...items, ...await _novelasflix(query: query)]);
+        } catch (_) {
+          // Keep the backend catalog when this additional source is unavailable.
+        }
         if (query == null) await _save(items);
         return CatalogResult(items, []);
       } finally {
@@ -101,8 +118,11 @@ class LiveCatalog {
     }
     final errors = <String>[];
     final batches = await Future.wait(origins.entries.map((entry) async {
-      final session = SourceSession(entry.value);
+      final session = sessionFactory(entry.value);
       try {
+        if (entry.key == 'novelasflix') {
+          return await _novelasflix(query: query);
+        }
         if (entry.key == 'xonados') {
           final novels = await _xonados(session);
           return query == null
@@ -129,6 +149,94 @@ class LiveCatalog {
     final filtered = merged;
     if (query == null && merged.isNotEmpty) await _save(merged);
     return CatalogResult(filtered, errors);
+  }
+
+  Future<List<MediaItem>> _novelasflix({String? query}) async {
+    Future<List<MediaItem>> search(String text) async {
+      final session = sessionFactory(novelasflixOrigin);
+      try {
+        return parseNovelasflixSearch(await session.get(
+            '/api/search?search=${Uri.encodeQueryComponent(text)}'));
+      } finally {
+        session.close();
+      }
+    }
+    if (query != null) return search(query);
+    final session = sessionFactory(novelasflixOrigin);
+    final items = <MediaItem>[];
+    try {
+      items.addAll(parseNovelasflixCards(await session.get('/')));
+    } finally {
+      session.close();
+    }
+    final related = await Future.wait([
+      'Além do Tempo', 'Avenida Brasil', 'A Nobreza do Amor',
+      'Por Você', 'Quem Ama Cuida', 'A Fazenda 18'
+    ].map((title) async {
+      try { return await search(title); }
+      catch (_) { return <MediaItem>[]; }
+    }));
+    items.addAll(related.expand((batch) => batch));
+    return items;
+  }
+
+  Future<CatalogResult> category(CatalogCategory category,
+      {String? kind, bool force = false}) async {
+    final key = '${kind ?? 'all'}:${category.slug}';
+    if (!force && categoryCache.containsKey(key)) return categoryCache[key]!;
+    final page = await more(kind: kind, category: category, reset: force);
+    final result = CatalogResult(page.items, page.errors);
+    if (page.errors.isEmpty) categoryCache[key] = result;
+    return result;
+  }
+
+  List<MediaItem> mergeItems(List<MediaItem> items) => _merge(items);
+
+  Future<CatalogPage> more({String? kind, CatalogCategory? category,
+      bool reset = false}) async {
+    final slug = category?.slug;
+    if (slug != null && !RegExp(r'^[a-z0-9-]+$').hasMatch(slug)) {
+      throw StateError('Categoria inválida.');
+    }
+    final key = '${kind ?? 'all'}:${slug ?? 'all'}';
+    if (reset) feeds.remove(key);
+    final feed = feeds.putIfAbsent(key, _CatalogFeed.new);
+    final paths = <String, String>{};
+    for (final provider in ['rtfilmes', 'tontons']) {
+      if (slug != null) {
+        paths['$provider:category'] = '/melhores/$slug/';
+      } else {
+        if (kind != 'series') paths['$provider:movie'] = '/filme/';
+        if (kind != 'movie') paths['$provider:series'] = '/serie/';
+      }
+    }
+    final errors = <String>[];
+    final batches = await Future.wait(paths.entries.map((entry) async {
+      if (feed.ended.contains(entry.key)) return <MediaItem>[];
+      final provider = entry.key.split(':').first;
+      final page = feed.pages[entry.key] ?? 1;
+      final pagination = page == 1 ? '' : 'page/$page/';
+      final type = kind == 'series' ? 'tvshows' : kind == 'movie' ? 'movies' : null;
+      final query = slug != null && type != null ? '?post_type=$type' : '';
+      final session = sessionFactory(origins[provider]!);
+      try {
+        final html = await session.get('${entry.value}$pagination$query');
+        final items = _cards(html, provider)
+            .where((i) => kind == null || i.kind == kind).toList();
+        feed.pages[entry.key] = page + 1;
+        if (!html.contains('/page/${page + 1}/')) feed.ended.add(entry.key);
+        return items;
+      } catch (_) {
+        errors.add(provider);
+        return <MediaItem>[];
+      } finally {
+        session.close();
+      }
+    }));
+    feed.items.addAll(batches.expand((v) => v));
+    final merged = _merge(feed.items);
+    feed.items..clear()..addAll(merged);
+    return CatalogPage(merged, feed.ended.length < paths.length, errors.toSet().toList());
   }
 
   Future<void> _save(List<MediaItem> items) async {
@@ -308,6 +416,14 @@ class LiveCatalog {
   }
 
   Future<List<Map<String, dynamic>>> episodes(MediaSource source) async {
+    if (source.provider == 'novelasflix') {
+      final session = sessionFactory(novelasflixOrigin);
+      try {
+        return parseNovelasflixEpisodes(await session.get(source.pageUrl));
+      } finally {
+        session.close();
+      }
+    }
     if (apiBase.isNotEmpty) {
       final client = http.Client();
       try {
@@ -323,7 +439,7 @@ class LiveCatalog {
         client.close();
       }
     }
-    final session = SourceSession(origins[source.provider]!);
+    final session = sessionFactory(origins[source.provider]!);
     try {
       if (source.provider != 'xonados') {
         final page = await session.get(source.pageUrl);

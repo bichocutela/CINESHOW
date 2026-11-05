@@ -9,6 +9,11 @@ import 'package:url_launcher/url_launcher.dart';
 import 'core/models/media_item.dart';
 import 'core/services/poster_sources.dart';
 import 'core/services/provider_playback.dart';
+import 'core/services/catalog_categories.dart';
+import 'features/catalog/category_bar.dart';
+import 'features/downloads/downloads_page.dart';
+import 'core/services/catalog_notices.dart';
+import 'features/notices/notices_page.dart';
 import 'features/live/live_page.dart';
 import 'features/player/presentation/player_page.dart';
 import 'features/player/presentation/source_page.dart';
@@ -38,7 +43,7 @@ class ShellPage extends StatefulWidget {
   State<ShellPage> createState() => _ShellState();
 }
 
-class _ShellState extends State<ShellPage> {
+class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
   final catalog = LiveCatalog();
   List<MediaItem> items = [];
   Set<String> favorites = {};
@@ -47,9 +52,21 @@ class _ShellState extends State<ShellPage> {
   int tab = 0;
   bool liveOpened = false;
   String filter = 'Todos';
+  CatalogCategory? category;
+  List<MediaItem>? categoryItems;
+  bool categoryLoading = false;
+  int categoryRequest = 0;
+  bool loadingMore = false, hasMore = true;
+  Timer? syncTimer;
+  bool foreground = true, syncing = false;
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    CatalogNotices.instance.refreshBadge();
+    syncTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      if (foreground && !syncing) _sync();
+    });
     _load();
   }
 
@@ -62,7 +79,7 @@ class _ShellState extends State<ShellPage> {
       items = cached;
       loading = cached.isEmpty;
     });
-    await _refresh();
+    await _sync();
   }
 
   Future<void> _refresh() async {
@@ -70,10 +87,12 @@ class _ShellState extends State<ShellPage> {
       final r = await catalog.refresh();
       if (!mounted) return;
       setState(() {
-        if (r.items.isNotEmpty) items = r.items;
+        if (r.items.isNotEmpty) items = catalog.mergeItems([...items, ...r.items]);
         errors = r.errors;
         loading = false;
       });
+      await CatalogNotices.instance.syncCatalog(r.items);
+      if (category != null) await _selectCategory(category, force: true);
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -82,6 +101,91 @@ class _ShellState extends State<ShellPage> {
         });
       }
     }
+  }
+
+  Future<void> _selectCategory(CatalogCategory? next, {bool force = false}) async {
+    final generation = ++categoryRequest;
+    final section = filter;
+    setState(() {
+      category = next;
+      categoryItems = null;
+      categoryLoading = next != null;
+      loadingMore = false;
+      hasMore = true;
+    });
+    if (next == null) return;
+    try {
+      final result = await catalog.category(next, kind: categoryKind(section), force: force);
+      if (!mounted || generation != categoryRequest) return;
+      setState(() {
+        categoryItems = result.items;
+        categoryLoading = false;
+      });
+      if (result.errors.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Algumas fontes desta categoria não responderam.')));
+      }
+    } catch (_) {
+      if (!mounted || generation != categoryRequest) return;
+      setState(() { categoryItems = []; categoryLoading = false; });
+    }
+  }
+
+  Future<void> _more() async {
+    if (loadingMore || categoryLoading) return;
+    final generation = categoryRequest;
+    setState(() => loadingMore = true);
+    try {
+      final page = await catalog.more(kind: categoryKind(filter), category: category);
+      if (!mounted || generation != categoryRequest) return;
+      setState(() {
+        if (category == null) {
+          items = catalog.mergeItems([...items, ...page.items]);
+        } else {
+          categoryItems = page.items;
+        }
+        hasMore = page.hasMore;
+        loadingMore = false;
+      });
+      if (page.errors.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Algumas fontes falharam. Toque novamente para tentar as páginas pendentes.')));
+      }
+    } catch (_) {
+      if (mounted && generation == categoryRequest) setState(() => loadingMore = false);
+    }
+  }
+
+  Future<void> _sync() async {
+    if (syncing) return;
+    syncing = true;
+    try {
+      await _refresh();
+      for (final watched in await CatalogNotices.instance.watched()) {
+        if (!mounted || !foreground) break;
+        final item = MediaItem.fromJson(Map<String, dynamic>.from(watched['item'] as Map));
+        final source = MediaSource.fromJson(Map<String, dynamic>.from(watched['source'] as Map));
+        try {
+          final chapters = await catalog.episodes(source);
+          await CatalogNotices.instance.syncChapters(item, source, chapters);
+        } catch (_) {
+          // One unavailable source must not stop other followed titles.
+        }
+      }
+    } finally { syncing = false; }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    foreground = state == AppLifecycleState.resumed;
+    if (foreground) _sync();
+  }
+
+  @override
+  void dispose() {
+    syncTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<void> _favorite(MediaItem item) async {
@@ -104,14 +208,22 @@ class _ShellState extends State<ShellPage> {
               onFavorite: () => _favorite(item))));
   @override
   Widget build(BuildContext context) {
-    final visible =
-        items.where((i) => filter == 'Todos' || i.typeLabel == filter).toList();
+    final visible = (category == null ? items : categoryItems ?? <MediaItem>[])
+        .where((i) => filter == 'Todos' || i.typeLabel == filter).toList();
     return Scaffold(
         appBar: AppBar(
             toolbarHeight: 88,
             title: Image.asset('assets/logo_header.png',
                 height: 72, fit: BoxFit.contain, semanticLabel: 'Cine Show'),
             actions: [
+              ValueListenableBuilder<int>(
+                  valueListenable: CatalogNotices.instance.unread,
+                  builder: (context, count, _) => IconButton(
+                      tooltip: 'Novidades',
+                      icon: Badge(isLabelVisible: count > 0,
+                          label: Text('$count'), child: const Icon(Icons.notifications_outlined)),
+                      onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
+                          builder: (_) => NoticesPage(onOpen: _details))))),
               IconButton(
                   onPressed: () => Navigator.push(
                       context,
@@ -123,7 +235,7 @@ class _ShellState extends State<ShellPage> {
             ]),
         body: IndexedStack(index: tab, children: [
           RefreshIndicator(
-              onRefresh: _refresh,
+              onRefresh: _sync,
               child: CustomScrollView(slivers: [
                 SliverToBoxAdapter(
                     child: Padding(
@@ -143,8 +255,15 @@ class _ShellState extends State<ShellPage> {
                                     child: ChoiceChip(
                                         label: Text(type),
                                         selected: filter == type,
-                                        onSelected: (_) =>
-                                            setState(() => filter = type)))
+                                        onSelected: (_) => setState(() {
+                                          filter = type;
+                                          category = null;
+                                          categoryItems = null;
+                                          categoryLoading = false;
+                                          categoryRequest++;
+                                          loadingMore = false;
+                                          hasMore = true;
+                                        })))
                             ])))),
                 if (errors.isNotEmpty)
                   SliverToBoxAdapter(
@@ -159,15 +278,20 @@ class _ShellState extends State<ShellPage> {
                 if (loading)
                   const SliverFillRemaining(
                       child: Center(child: CircularProgressIndicator()))
-                else if (visible.isEmpty)
-                  const SliverFillRemaining(
-                      child:
-                          Center(child: Text('Nenhum título nesta categoria.')))
                 else ...[
-                  SliverToBoxAdapter(
+                  if (visible.isNotEmpty) SliverToBoxAdapter(
                       child: HeroCard(
                           item: visible.first,
                           onOpen: () => _details(visible.first))),
+                  SliverToBoxAdapter(child: CategoryBar(
+                      section: filter, selected: category,
+                      onSelected: _selectCategory)),
+                  if (categoryLoading)
+                    const SliverToBoxAdapter(child: LinearProgressIndicator()),
+                  if (!categoryLoading && visible.isEmpty)
+                    const SliverToBoxAdapter(child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text('Nenhum título retornado nesta categoria.'))),
                   const SliverToBoxAdapter(
                       child: Padding(
                           padding: EdgeInsets.fromLTRB(16, 20, 16, 12),
@@ -187,7 +311,14 @@ class _ShellState extends State<ShellPage> {
                                   maxCrossAxisExtent: 180,
                                   childAspectRatio: .58,
                                   crossAxisSpacing: 12,
-                                  mainAxisSpacing: 16)))
+                                  mainAxisSpacing: 16))),
+                  if (filter != 'Novela' && filter != 'Reality')
+                    SliverToBoxAdapter(child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: OutlinedButton.icon(
+                            onPressed: loadingMore || categoryLoading || !hasMore ? null : _more,
+                            icon: const Icon(Icons.expand_more),
+                            label: Text(loadingMore ? 'Carregando...' : hasMore ? 'Carregar mais títulos' : 'Fim do catálogo disponível'))))
                 ]
               ])),
           ListView(padding: const EdgeInsets.all(16), children: [
@@ -334,9 +465,13 @@ class _DetailsState extends State<DetailsPage> {
   String? playbackError;
   ProviderPlaybackResolver? activeResolver;
   String? error;
+  bool following = false;
   @override
   void initState() {
     super.initState();
+    CatalogNotices.instance.isFollowing(widget.item.id).then((value) {
+      if (mounted) setState(() => following = value);
+    });
     if (widget.item.kind != 'movie' && selected != null) _episodes();
   }
 
@@ -347,7 +482,9 @@ class _DetailsState extends State<DetailsPage> {
       episodes = [];
     });
     try {
-      final e = await widget.catalog.episodes(selected!);
+      final source = selected!;
+      final e = await widget.catalog.episodes(source);
+      await CatalogNotices.instance.syncChapters(widget.item, source, e);
       if (mounted) setState(() => episodes = e);
     } catch (_) {
       if (mounted) {
@@ -376,7 +513,7 @@ class _DetailsState extends State<DetailsPage> {
     }
   }
 
-  Future<void> _watchSource(String url) async {
+  Future<void> _watchSource(String url, {bool download = false}) async {
     final source = selected;
     if (resolving || source == null) return;
     final resolver = ProviderPlaybackResolver();
@@ -414,6 +551,13 @@ class _DetailsState extends State<DetailsPage> {
           await resolver.expand(choice).timeout(const Duration(seconds: 45));
       if (!mounted) return;
       final playable = expanded.first;
+      if (download) {
+        if (!playable.direct) {
+          throw StateError('Esta fonte fornece apenas um player externo e não disponibiliza arquivo para download.');
+        }
+        await downloadMedia(context, playable.media(widget.item));
+        return;
+      }
       Navigator.push(
           context,
           MaterialPageRoute<void>(
@@ -444,7 +588,20 @@ class _DetailsState extends State<DetailsPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: Text(widget.item.title)),
+      appBar: AppBar(title: Text(widget.item.title), actions: [
+        if (widget.item.kind != 'movie' && selected != null)
+          IconButton(tooltip: following ? 'Parar de acompanhar capítulos' : 'Acompanhar capítulos',
+              icon: Icon(following ? Icons.notifications_active : Icons.notifications_outlined),
+              onPressed: () async {
+                try {
+                  final value = await CatalogNotices.instance.toggle(widget.item, selected!, episodes);
+                  if (mounted) setState(() => following = value);
+                } catch (_) {
+                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Não foi possível acompanhar este título. Limite de 10 títulos.')));
+                }
+              })
+      ]),
       body: ListView(padding: const EdgeInsets.all(20), children: [
         SizedBox(
             height: 260,
@@ -487,6 +644,16 @@ class _DetailsState extends State<DetailsPage> {
               icon: const Icon(Icons.play_arrow),
               label:
                   Text(resolving ? 'Localizando vídeo...' : 'Assistir no app')),
+        if (selected != null && widget.item.streamUrl?.isNotEmpty != true)
+          OutlinedButton.icon(
+              onPressed: resolving ? null : () => _watchSource(selected!.pageUrl, download: true),
+              icon: const Icon(Icons.download_outlined),
+              label: Text(widget.item.kind == 'movie' ? 'Baixar filme' : 'Baixar capítulo')),
+        if (widget.item.streamUrl?.isNotEmpty == true)
+          OutlinedButton.icon(
+              onPressed: () => downloadMedia(context, widget.item),
+              icon: const Icon(Icons.download_outlined),
+              label: const Text('Baixar vídeo')),
         if (resolving) const LinearProgressIndicator(),
         if (playbackError != null)
           Padding(
@@ -530,7 +697,16 @@ class _DetailsState extends State<DetailsPage> {
             ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(e['title'] as String),
-                trailing: const Icon(Icons.play_circle_outline),
+                trailing: PopupMenuButton<String>(
+                    tooltip: 'Opções do capítulo',
+                    onSelected: (action) => _watchSource(
+                        (e['page_url'] as String?) ??
+                        (e['player_path'] as String?) ?? selected!.pageUrl,
+                        download: action == 'download'),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'play', child: Text('Assistir')),
+                      PopupMenuItem(value: 'download', child: Text('Baixar capítulo'))
+                    ]),
                 onTap: () => _watchSource((e['page_url'] as String?) ??
                     (e['player_path'] as String?) ??
                     selected!.pageUrl))
@@ -820,6 +996,11 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
       const Text(
           'Catálogo de filmes, séries e novelas. Puxe o início para atualizar. Os vídeos abrem na fonte original.'),
       const SizedBox(height: 24),
+      OutlinedButton.icon(
+          onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
+              builder: (_) => const DownloadsPage())),
+          icon: const Icon(Icons.download_outlined),
+          label: const Text('Meus downloads')),
       FilledButton.icon(
           onPressed: checking || downloading || installing ? null : _updates,
           icon: const Icon(Icons.system_update),

@@ -1,9 +1,11 @@
 const origins = {
   'rtfilmes': 'https://filmesamadoresgratis.com',
   'tontons': 'https://filmeonlinebistrita.com',
-  'xonados': 'https://www.xonados.com'
+  'xonados': 'https://www.xonados.com',
+  'novelasflix': 'https://novelasflix.lol'
 };
 const sourceHostAliases = {
+  'novelasflix.lol': 'novelasflix',
   'filmesamadoresgratis.com': 'rtfilmes',
   'www.filmesamadoresgratis.com': 'rtfilmes',
   'filmeonlinebistrita.com': 'tontons',

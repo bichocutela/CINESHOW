@@ -23,6 +23,7 @@ class MediaSource {
         'rtfilmes' => 'Pobreflix',
         'tontons' => 'TopFlix',
         'xonados' => 'Xonados',
+        'novelasflix' => 'Novelasflix',
         _ => provider
       };
 }

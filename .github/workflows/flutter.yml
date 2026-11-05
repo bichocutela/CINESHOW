@@ -124,10 +124,15 @@ jobs:
           prerelease: false
           generate_release_notes: true
           body: |
-            Atualização oficial com a mesma assinatura permanente e o mesmo pacote Android.
-            - Corrige controles do player incorporado que ficavam sob os botões de navegação do Android.
-            - Respeita a área segura inferior e lateral em tela normal e em tela cheia.
-            - Mantém as integrações de filmes, novelas e canais ao vivo.
+            Atualização oficial com a mesma assinatura permanente.
+            - Corrige a área dos controles sobre a navegação do Android.
+            - Categorias de filmes e séries acima de Explore o catálogo.
+            - Catálogo por páginas com cursores independentes por fonte.
+            - Novelasflix como fonte adicional; capas aproveitadas dos dados publicados.
+            - Baixar filme ou capítulo quando a fonte disponibiliza MP4 direto.
+            - Sobre > Meus downloads: progresso, abrir e excluir arquivos.
+            - Sino com novidades e acompanhamento de capítulos ao abrir e enquanto o app está em uso.
+            Players externos podem exigir anúncios ou verificação. Não há garantia de download para iframe/HLS.
             Abra Sobre e verifique a atualização para baixar pelo próprio CINESHOW.
     permissions:
       contents: write
