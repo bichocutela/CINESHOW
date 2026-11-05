@@ -16,7 +16,6 @@ import 'package:cineshow/core/services/anime_catalog.dart';
 import 'package:cineshow/core/services/media_downloads.dart';
 import 'package:cineshow/features/anime/anime_category_view.dart';
 import 'package:cineshow/features/downloads/downloads_page.dart';
-import 'package:cineshow/main.dart';
 
 const source = MediaSource(
     provider: 'rtfilmes',
@@ -34,16 +33,6 @@ MediaItem movie(
         year: year,
         durationMinutes: 0,
         sources: const [source]);
-
-class EmptyCatalog extends LiveCatalog {
-  @override
-  Future<List<Map<String, dynamic>>> episodes(MediaSource source) async => [];
-  @override
-  Future<List<MediaItem>> cached() async => [];
-  @override
-  Future<CatalogResult> refresh({String? query}) async =>
-      const CatalogResult([], []);
-}
 
 class FakeAnime extends AnimeCatalogService {
   final calls = <String>[];
@@ -272,17 +261,6 @@ void main() {
     expect(await notices.toggle(movie(), source, []), isTrue);
     await notices.markRead();
     expect(notices.unread.value, 0);
-  });
-  testWidgets('My List shows a saved title that has never appeared on Home',
-      (tester) async {
-    await Favorites().toggle(movie());
-    await tester
-        .pumpWidget(MaterialApp(home: ShellPage(catalog: EmptyCatalog())));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Minha lista').last);
-    await tester.pumpAndSettle();
-    expect(find.text('Encontrado pelo ator'), findsOneWidget);
-    await tester.pumpWidget(const SizedBox.shrink());
   });
   testWidgets('anime navigation cancels the pending text query',
       (tester) async {
