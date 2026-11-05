@@ -125,15 +125,9 @@ jobs:
           generate_release_notes: true
           body: |
             Atualização oficial com a mesma assinatura permanente e o mesmo pacote Android.
-            - Descobre os players reais de cada título, ignorando trailers e duplicatas.
-            - Preserva opções que responderam quando outra falha.
-            - Valida vídeo recebido em blocos pequenos de rede.
-            - Xonados: localiza o vídeo do capítulo em uma sessão nova e abre mídia validada no player nativo.
-            - Filmes: consulta os players pela API DooPlay, sem abrir a página completa do agregador.
-            - Seleção de players retornados pela fonte e incorporação em uma página mínima de iframe.
-            - Diferencia vídeo direto de player externo, que pode exigir anúncios ou verificação do provedor.
-            - Atualiza as origens observadas das fontes e mantém assinatura e atualização dentro do app.
-            A disponibilidade das transmissões e a compatibilidade dos players de terceiros dependem de cada fonte.
+            - Corrige controles do player incorporado que ficavam sob os botões de navegação do Android.
+            - Respeita a área segura inferior e lateral em tela normal e em tela cheia.
+            - Mantém as integrações de filmes, novelas e canais ao vivo.
             Abra Sobre e verifique a atualização para baixar pelo próprio CINESHOW.
     permissions:
       contents: write

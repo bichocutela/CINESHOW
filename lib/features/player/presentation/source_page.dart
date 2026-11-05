@@ -177,31 +177,35 @@ class _SourcePageState extends State<SourcePage> {
                   ),
                 ],
               ),
-        body: fullscreenView ??
-            Column(
-              children: [
-                if (progress < 100 && !failed)
-                  LinearProgressIndicator(value: progress / 100),
-                if (failed)
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        const Text(
-                          'Não foi possível carregar a página do filme. Tente novamente ou escolha outra fonte nos detalhes.',
-                        ),
-                        TextButton(
-                          onPressed: _retry,
-                          child: const Text('Tentar novamente'),
-                        ),
-                      ],
+        body: SafeArea(
+          top: fullscreenView != null,
+          maintainBottomViewPadding: true,
+          child: fullscreenView ??
+              Column(
+                children: [
+                  if (progress < 100 && !failed)
+                    LinearProgressIndicator(value: progress / 100),
+                  if (failed)
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Não foi possível carregar a página do filme. Tente novamente ou escolha outra fonte nos detalhes.',
+                          ),
+                          TextButton(
+                            onPressed: _retry,
+                            child: const Text('Tentar novamente'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                Expanded(
-                    child: failed
-                        ? const SizedBox.shrink()
-                        : WebViewWidget(controller: controller)),
-              ],
-            ),
+                  Expanded(
+                      child: failed
+                          ? const SizedBox.shrink()
+                          : WebViewWidget(controller: controller)),
+                ],
+              ),
+        ),
       ));
 }
