@@ -1,5 +1,8 @@
 name: Sync public live directories
 on:
+  push:
+    branches: [main]
+    paths: ['tools/sync_live_sources.py', '.github/workflows/live-directories.yml']
   schedule:
     - cron: '*/30 * * * *'
   workflow_dispatch:
