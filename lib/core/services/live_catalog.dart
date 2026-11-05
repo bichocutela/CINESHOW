@@ -179,7 +179,8 @@ class LiveCatalog {
         }
       }));
       for (final batch in collections) {
-        amyThemedIds.addAll(batch.expand((i) => i.sources.map((s) => s.sourceId)));
+        amyThemedIds
+            .addAll(batch.expand((i) => i.sources.map((s) => s.sourceId)));
         items.addAll(batch);
       }
       return items;
@@ -250,7 +251,8 @@ class LiveCatalog {
     for (final provider in ['rtfilmes', 'tontons', 'amyflix']) {
       if (slug == 'amy-gl') {
         if (provider == 'amyflix') {
-          if (kind != 'series') paths['amyflix:gl-movie'] = '/genero/filmes-saficos-atualizados/';
+          if (kind != 'series')
+            paths['amyflix:gl-movie'] = '/genero/filmes-saficos-atualizados/';
           if (kind != 'movie') {
             paths['amyflix:gl-current'] = '/genero/em-lancamento/';
             paths['amyflix:gl-complete'] = '/genero/completo/';
@@ -306,7 +308,8 @@ class LiveCatalog {
     await p.setString(_key, jsonEncode(items.map((i) => i.toJson()).toList()));
   }
 
-  List<MediaItem> _cards(String html, String provider, {bool thematic = false}) {
+  List<MediaItem> _cards(String html, String provider,
+      {bool thematic = false}) {
     final result = <MediaItem>[];
     for (final m
         in RegExp(r'<article\b.*?</article>', dotAll: true).allMatches(html)) {
@@ -315,7 +318,8 @@ class LiveCatalog {
       final id = RegExp(r'(\d+)$').firstMatch(a['id'] ?? '')?[1];
       final title = RegExp(r'<h3[^>]*>\s*<a([^>]*)>(.*?)</a>', dotAll: true)
           .firstMatch(block);
-      final heading = RegExp(r'<h3[^>]*>(.*?)</h3>', dotAll: true).firstMatch(block)?[1];
+      final heading =
+          RegExp(r'<h3[^>]*>(.*?)</h3>', dotAll: true).firstMatch(block)?[1];
       if (id == null || heading == null) continue;
       final firstLink = RegExp(r'<a\b[^>]*>').firstMatch(block)?[0] ?? '';
       final link = attributes(title?[1] ?? firstLink)['href'] ?? '';
@@ -335,8 +339,11 @@ class LiveCatalog {
           title: cleanAudioTitle(plain(title?[2] ?? heading)),
           description: '',
           genre: '',
-          audio: audioLabel('${catalogAudio(block)} ${provider == 'amyflix' ? audioLabel(plain(heading)) : ''}'),
-          tags: provider == 'amyflix' && (thematic || amyThemedIds.contains(id)) ? const ['LGBT+', 'GL / Sáfico'] : const [],
+          audio: audioLabel(
+              '${catalogAudio(block)} ${provider == 'amyflix' ? audioLabel(plain(heading)) : ''}'),
+          tags: provider == 'amyflix' && (thematic || amyThemedIds.contains(id))
+              ? const ['LGBT+', 'GL / Sáfico']
+              : const [],
           year: years.isEmpty ? 0 : int.parse(years.last[0]!),
           durationMinutes: 0,
           posterUrl: catalogPoster(ia, origins[provider]!),
@@ -375,8 +382,12 @@ class LiveCatalog {
       return MediaItem(
           id: '$provider:${e.key}',
           title: cleanAudioTitle(plain(j['title'] as String)),
-          audio: provider == 'amyflix' ? audioLabel(plain(j['title'] as String)) : '',
-          tags: provider == 'amyflix' && amyThemedIds.contains(e.key.toString()) ? const ['LGBT+', 'GL / Sáfico'] : const [],
+          audio: provider == 'amyflix'
+              ? audioLabel(plain(j['title'] as String))
+              : '',
+          tags: provider == 'amyflix' && amyThemedIds.contains(e.key.toString())
+              ? const ['LGBT+', 'GL / Sáfico']
+              : const [],
           description: '',
           genre: '',
           year: int.tryParse('${(j['extra'] as Map?)?['date']}') ?? 0,
@@ -457,7 +468,9 @@ class LiveCatalog {
         groups[key] = MediaItem(
             id: existing.id,
             title: existing.title,
-            description: existing.description.isNotEmpty ? existing.description : i.description,
+            description: existing.description.isNotEmpty
+                ? existing.description
+                : i.description,
             genre: existing.genre,
             audio: audioLabel('${existing.audio} ${i.audio}'),
             tags: {...existing.tags, ...i.tags}.toList(),

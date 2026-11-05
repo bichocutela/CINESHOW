@@ -140,7 +140,11 @@ class ProviderPlaybackResolver {
     final page = await _text(
         Uri.parse(origin).replace(path: path.path, query: path.query),
         discover: true);
-    final brand = source.provider == 'amyflix' ? 'amy' : source.provider == 'rtfilmes' ? 'pobreflix' : 'topflix';
+    final brand = source.provider == 'amyflix'
+        ? 'amy'
+        : source.provider == 'rtfilmes'
+            ? 'pobreflix'
+            : 'topflix';
     if (!page.toLowerCase().contains(brand) ||
         !page.toLowerCase().contains('dooplay')) {
       throw StateError('A fonte não retornou seu catálogo reconhecido.');
@@ -150,10 +154,13 @@ class ProviderPlaybackResolver {
 
   Future<List<ProviderPlaybackOption>> _dooplay(
       MediaSource source, String page) async {
-    final configuration = RegExp(r'var\s+dtAjax\s*=\s*(\{.*?\});').firstMatch(page);
+    final configuration =
+        RegExp(r'var\s+dtAjax\s*=\s*(\{.*?\});').firstMatch(page);
     Map config = {};
     if (configuration != null) {
-      try { config = jsonDecode(configuration[1]!) as Map; } catch (_) {}
+      try {
+        config = jsonDecode(configuration[1]!) as Map;
+      } catch (_) {}
     }
     final selections = <Map<String, String>>[];
     final seen = <String>{};
@@ -179,10 +186,14 @@ class ProviderPlaybackResolver {
     final found = await Future.wait(selections.take(12).map((selection) async {
       try {
         final response = config['play_method'] == 'admin_ajax'
-            ? await _text(_url(config['url'] as String? ?? '/wp-admin/admin-ajax.php'),
-                body: 'action=doo_player_ajax&post=${selection['post']}&type=${selection['type']}&nume=${selection['source']}',
-                referer: '$_origin/', xhr: true)
-            : await _get('/wp-json/dooplayer/v2/${selection['post']}/${selection['type']}/${selection['source']}');
+            ? await _text(
+                _url(config['url'] as String? ?? '/wp-admin/admin-ajax.php'),
+                body:
+                    'action=doo_player_ajax&post=${selection['post']}&type=${selection['type']}&nume=${selection['source']}',
+                referer: '$_origin/',
+                xhr: true)
+            : await _get(
+                '/wp-json/dooplayer/v2/${selection['post']}/${selection['type']}/${selection['source']}');
         final data = jsonDecode(response) as Map;
         final url = data['embed_url'] as String?;
         if (data['type'] != 'iframe' || url == null) return null;
@@ -199,7 +210,8 @@ class ProviderPlaybackResolver {
         };
         return ProviderPlaybackOption(
             url: url,
-            label: '${selection['label']!.isEmpty ? label : selection['label']} · player do provedor',
+            label:
+                '${selection['label']!.isEmpty ? label : selection['label']} · player do provedor',
             direct: false,
             id: '${source.provider}:${selection['post']}:${selection['source']}',
             headers: {'Referer': '$_origin/'});

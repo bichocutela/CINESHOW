@@ -221,13 +221,19 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
   }
 
   Future<void> _details(MediaItem item, {ContinueEntry? resume}) async {
-    await Navigator.push(context, MaterialPageRoute<void>(
-        builder: (_) => DetailsPage(item: item, catalog: catalog,
-            isFavorite: favorites.contains(item.id),
-            onFavorite: () => _favorite(item),
-            resumeSource: resume?.source, resumePage: resume?.pageUrl)));
+    await Navigator.push(
+        context,
+        MaterialPageRoute<void>(
+            builder: (_) => DetailsPage(
+                item: item,
+                catalog: catalog,
+                isFavorite: favorites.contains(item.id),
+                onFavorite: () => _favorite(item),
+                resumeSource: resume?.source,
+                resumePage: resume?.pageUrl)));
     await _recent();
   }
+
   @override
   Widget build(BuildContext context) {
     final visible = (category == null ? items : categoryItems ?? <MediaItem>[])
@@ -303,18 +309,27 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
                                       .colorScheme
                                       .onSurfaceVariant)))),
                 if (recent.isNotEmpty)
-                  SliverToBoxAdapter(child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('Continuar assistindo',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                        for (final entry in recent.take(5)) ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(Icons.play_circle_outline),
-                            title: Text(entry.item.title),
-                            subtitle: Text('${entry.position.position.inMinutes} min de ${entry.position.duration.inMinutes} min'),
-                            onTap: () => _details(entry.item, resume: entry))
-                      ]))),
+                  SliverToBoxAdapter(
+                      child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Continuar assistindo',
+                                    style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold)),
+                                for (final entry in recent.take(5))
+                                  ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      leading:
+                                          const Icon(Icons.play_circle_outline),
+                                      title: Text(entry.item.title),
+                                      subtitle: Text(
+                                          '${entry.position.position.inMinutes} min de ${entry.position.duration.inMinutes} min'),
+                                      onTap: () =>
+                                          _details(entry.item, resume: entry))
+                              ]))),
                 if (loading)
                   const SliverFillRemaining(
                       child: Center(child: CircularProgressIndicator()))
@@ -435,22 +450,42 @@ class Cover extends StatelessWidget {
     }
 
     return ClipRRect(
-        borderRadius: BorderRadius.circular(12), child: Stack(
-          fit: StackFit.expand, children: [
-            imageAt(0),
-            if (item.tags.isNotEmpty) Positioned(
-                left: 6, top: 6,
-                child: DecoratedBox(decoration: BoxDecoration(color: Color(0xFF682D75), borderRadius: BorderRadius.circular(6)),
-                  child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                      child: Text(item.tags.first, style: const TextStyle(color: Colors.white, fontSize: 11))))),
-            if (item.audio.isNotEmpty) Positioned(
-                left: 6, right: 6, bottom: 6,
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(fit: StackFit.expand, children: [
+          imageAt(0),
+          if (item.tags.isNotEmpty)
+            Positioned(
+                left: 6,
+                top: 6,
                 child: DecoratedBox(
-                    decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(6)),
-                    child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                      child: Text(item.audio, maxLines: 2,
-                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)))))
-          ]));
+                    decoration: BoxDecoration(
+                        color: Color(0xFF682D75),
+                        borderRadius: BorderRadius.circular(6)),
+                    child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 4),
+                        child: Text(item.tags.first,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 11))))),
+          if (item.audio.isNotEmpty)
+            Positioned(
+                left: 6,
+                right: 6,
+                bottom: 6,
+                child: DecoratedBox(
+                    decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(6)),
+                    child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 4),
+                        child: Text(item.audio,
+                            maxLines: 2,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600)))))
+        ]));
   }
 }
 
@@ -516,7 +551,8 @@ class DetailsPage extends StatefulWidget {
       required this.catalog,
       required this.isFavorite,
       required this.onFavorite,
-      this.resumeSource, this.resumePage});
+      this.resumeSource,
+      this.resumePage});
   final MediaItem item;
   final LiveCatalog catalog;
   final bool isFavorite;
@@ -529,7 +565,8 @@ class DetailsPage extends StatefulWidget {
 
 class _DetailsState extends State<DetailsPage> {
   late bool favorite = widget.isFavorite;
-  late MediaSource? selected = widget.resumeSource ?? widget.item.sources.firstOrNull;
+  late MediaSource? selected =
+      widget.resumeSource ?? widget.item.sources.firstOrNull;
   List<Map<String, dynamic>> episodes = [];
   bool loading = false;
   bool resolving = false;
@@ -552,7 +589,8 @@ class _DetailsState extends State<DetailsPage> {
     }
   }
 
-  Future<void> _episodes() => episodeRequest ??= _loadEpisodes().whenComplete(() => episodeRequest = null);
+  Future<void> _episodes() => episodeRequest ??=
+      _loadEpisodes().whenComplete(() => episodeRequest = null);
 
   Future<void> _loadEpisodes() async {
     setState(() {
@@ -592,8 +630,11 @@ class _DetailsState extends State<DetailsPage> {
     }
   }
 
-  Future<void> _watchSource(String url, {bool download = false,
-      bool auto = false, bool replaceCurrent = false, bool startFullscreen = false}) async {
+  Future<void> _watchSource(String url,
+      {bool download = false,
+      bool auto = false,
+      bool replaceCurrent = false,
+      bool startFullscreen = false}) async {
     final source = selected;
     if (resolving || source == null) return;
     if (widget.item.kind != 'movie' && episodes.isEmpty) await _episodes();
@@ -663,10 +704,15 @@ class _DetailsState extends State<DetailsPage> {
       if (!mounted) return;
       final route = MaterialPageRoute<void>(
           builder: (_) => playable.direct
-              ? PlayerPage(media: media, initialFullscreen: startFullscreen,
+              ? PlayerPage(
+                  media: media,
+                  initialFullscreen: startFullscreen,
                   onNext: next == null ? null : advance)
-              : SourcePage(title: widget.item.title, url: playable.url,
-                  headers: playable.headers, embedded: true,
+              : SourcePage(
+                  title: widget.item.title,
+                  url: playable.url,
+                  headers: playable.headers,
+                  embedded: true,
                   onNext: next == null ? null : () => advance(false)));
       if (replaceCurrent) {
         Navigator.of(context).pushReplacement(route);

@@ -10,11 +10,17 @@ String audioLabel(String value) {
 }
 
 String catalogAudio(String html) {
-  final tags = RegExp(r'''<(?:span|div)[^>]+class=["'](?:[^"']*\s)?quality(?:\s[^"']*)?["'][^>]*>(.*?)</(?:span|div)>''',
-      dotAll: true).allMatches(html);
-  return audioLabel(tags.map((m) => m[1]!.replaceAll(RegExp('<[^>]+>'), '')).join(' '));
+  final tags = RegExp(
+          r'''<(?:span|div)[^>]+class=["'](?:[^"']*\s)?quality(?:\s[^"']*)?["'][^>]*>(.*?)</(?:span|div)>''',
+          dotAll: true)
+      .allMatches(html);
+  return audioLabel(
+      tags.map((m) => m[1]!.replaceAll(RegExp('<[^>]+>'), '')).join(' '));
 }
 
-String cleanAudioTitle(String title) => title.replaceFirst(
-    RegExp(r'\s*[–-]\s*(?:dublado(?:\s+e\s+legendado)?|legendado)\s*$',
-        caseSensitive: false), '').trim();
+String cleanAudioTitle(String title) => title
+    .replaceFirst(
+        RegExp(r'\s*[–-]\s*(?:dublado(?:\s+e\s+legendado)?|legendado)\s*$',
+            caseSensitive: false),
+        '')
+    .trim();

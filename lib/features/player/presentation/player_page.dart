@@ -8,8 +8,12 @@ import '../widgets/playback_controls.dart';
 import '../../downloads/downloads_page.dart';
 
 class PlayerPage extends StatefulWidget {
-  const PlayerPage({super.key, required this.media, this.playbackGateway,
-      this.onNext, this.initialFullscreen = false});
+  const PlayerPage(
+      {super.key,
+      required this.media,
+      this.playbackGateway,
+      this.onNext,
+      this.initialFullscreen = false});
   final MediaItem media;
   final PlaybackGateway? playbackGateway;
   final Future<void> Function(bool fullscreen)? onNext;
@@ -100,11 +104,16 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       }
     });
     final value = controller?.value;
-    if (value != null && value.isCompleted && !loading &&
-        error == null && widget.onNext != null && !endAttempted) {
+    if (value != null &&
+        value.isCompleted &&
+        !loading &&
+        error == null &&
+        widget.onNext != null &&
+        !endAttempted) {
       endAttempted = true;
       unawaited(_advance());
-    } else if (value != null && value.position < value.duration - const Duration(seconds: 1)) {
+    } else if (value != null &&
+        value.position < value.duration - const Duration(seconds: 1)) {
       endAttempted = false;
     }
   }
@@ -118,8 +127,10 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       await widget.onNext!(fullscreen);
     } catch (_) {
       handingOffFullscreen = false;
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Não foi possível abrir o próximo capítulo. Tente novamente.')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Não foi possível abrir o próximo capítulo. Tente novamente.')));
     } finally {
       if (mounted) setState(() => advancing = false);
     }
@@ -233,7 +244,9 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                                 c.value.isPlaying ? c.pause() : c.play(),
                             onSeek: c.seekTo,
                             onFullscreen: _fullscreen,
-                            onNext: widget.onNext == null || advancing ? null : () => unawaited(_advance()),
+                            onNext: widget.onNext == null || advancing
+                                ? null
+                                : () => unawaited(_advance()),
                             child: Center(
                                 child: AspectRatio(
                               aspectRatio: c.value.aspectRatio > 0

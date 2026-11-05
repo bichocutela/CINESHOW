@@ -203,9 +203,11 @@ class _PlaybackControlsState extends State<PlaybackControls> {
                                     style: const TextStyle(
                                         color: Colors.white, fontSize: 12))),
                             if (widget.onNext != null)
-                              IconButton(tooltip: 'Próximo capítulo',
+                              IconButton(
+                                  tooltip: 'Próximo capítulo',
                                   onPressed: widget.onNext,
-                                  icon: const Icon(Icons.skip_next), color: Colors.white),
+                                  icon: const Icon(Icons.skip_next),
+                                  color: Colors.white),
                             IconButton(
                                 tooltip: widget.fullscreen
                                     ? 'Sair da tela cheia'

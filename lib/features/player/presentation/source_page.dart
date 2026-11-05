@@ -128,8 +128,9 @@ class _SourcePageState extends State<SourcePage> {
     try {
       await widget.onNext!();
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Não foi possível abrir o próximo capítulo.')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Não foi possível abrir o próximo capítulo.')));
     } finally {
       if (mounted) setState(() => advancing = false);
     }
@@ -182,10 +183,11 @@ class _SourcePageState extends State<SourcePage> {
                 ),
                 title: Text(widget.title),
                 actions: [
-                  if (widget.onNext != null) IconButton(
-                      tooltip: 'Próximo capítulo',
-                      onPressed: advancing ? null : _next,
-                      icon: const Icon(Icons.skip_next)),
+                  if (widget.onNext != null)
+                    IconButton(
+                        tooltip: 'Próximo capítulo',
+                        onPressed: advancing ? null : _next,
+                        icon: const Icon(Icons.skip_next)),
                   IconButton(
                       tooltip: 'Abrir na fonte',
                       onPressed: _external,
