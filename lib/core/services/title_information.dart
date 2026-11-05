@@ -152,10 +152,9 @@ class TitleInformationService {
             v.provider != source?.provider || v.sourceId != source?.sourceId)
       ];
       final pages = await Future.wait(sources.map((entry) async {
-        if (entry.provider == 'superflix' || entry.provider == 'tvaberta')
-          {
-return null;
-}
+        if (entry.provider == 'superflix' || entry.provider == 'tvaberta') {
+          return null;
+        }
         try {
           final uri = Uri.parse(canonicalSourceUrl(entry.pageUrl));
           if (uri.origin != origins[entry.provider]) return null;
@@ -180,10 +179,9 @@ return null;
       for (final page
           in pages.whereType<({MediaSource source, String html})>()) {
         final pageId = sourceImdbId(page.html);
-        if (confirmedId != null && pageId != null && pageId != confirmedId)
-          {
-continue;
-}
+        if (confirmedId != null && pageId != null && pageId != confirmedId) {
+          continue;
+        }
         final plot = sourceSynopsis(page.html);
         if (plot.isNotEmpty &&
             (result['plotSource'] == 'Catálogo' ||
@@ -204,10 +202,9 @@ continue;
         ];
         for (final values in [facts, people]) {
           for (final field in ['director', 'released', 'sourceYear']) {
-            if (result[field] == null && values[field] != null)
-              {
-result[field] = values[field];
-}
+            if (result[field] == null && values[field] != null) {
+              result[field] = values[field];
+            }
           }
         }
         final score = publishedImdbRating(page.html);
@@ -307,10 +304,9 @@ result[field] = values[field];
             ...(public['cast'] as List? ?? [])
           ]);
           for (final field in ['imdbRating', 'imdbRatingSource', 'director']) {
-            if (public[field] != null && public[field] != '')
-              {
-result[field] = public[field];
-}
+            if (public[field] != null && public[field] != '') {
+              result[field] = public[field];
+            }
           }
         } catch (_) {
           /* Public access may be refused. Keep attributed source data. */

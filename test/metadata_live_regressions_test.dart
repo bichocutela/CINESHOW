@@ -100,13 +100,11 @@ void main() {
     final service = TitleInformationService(
         apiBase: '',
         clientFactory: () => MockClient((request) async {
-              if (request.url.host == 'filmesamadoresgratis.com')
-                {
-return http.Response(fixture('source_credits'), 200);
-}
-              if (request.url.host == 'v2.sg.media-imdb.com')
-                {
-return http.Response(
+              if (request.url.host == 'filmesamadoresgratis.com') {
+                return http.Response(fixture('source_credits'), 200);
+              }
+              if (request.url.host == 'v2.sg.media-imdb.com') {
+                return http.Response(
                     jsonEncode({
                       'd': [
                         {
@@ -119,19 +117,16 @@ return http.Response(
                       ]
                     }),
                     200);
-}
-              if (request.url.host == 'www.imdb.com')
-                {
-return http.Response('Forbidden', 403);
-}
-              if (request.url.path == '/search')
-                {
-return http.Response(fixture('rotten_search'), 200);
-}
-              if (request.url.path.endsWith('/cast-and-crew'))
-                {
-return http.Response(fixture('rotten_cast'), 200);
-}
+              }
+              if (request.url.host == 'www.imdb.com') {
+                return http.Response('Forbidden', 403);
+              }
+              if (request.url.path == '/search') {
+                return http.Response(fixture('rotten_search'), 200);
+              }
+              if (request.url.path.endsWith('/cast-and-crew')) {
+                return http.Response(fixture('rotten_cast'), 200);
+              }
               return http.Response(fixture('rotten_title'), 200);
             }));
     final data = await service.load(item, source);

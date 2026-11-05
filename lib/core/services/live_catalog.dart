@@ -546,10 +546,9 @@ class LiveCatalog {
   }
 
   Future<List<Map<String, dynamic>>> episodes(MediaSource source) async {
-    if (source.provider == 'tvaberta')
-      {
-return TvAbertaService().episodes(source.sourceId);
-}
+    if (source.provider == 'tvaberta') {
+      return TvAbertaService().episodes(source.sourceId);
+    }
     if (source.provider == 'superflix') return [];
     if (source.provider == 'animesonlinecc' ||
         source.provider == 'megafilmes') {

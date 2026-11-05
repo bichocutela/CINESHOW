@@ -66,10 +66,9 @@ List<Map<String, dynamic>> parseSuperflixLive(String body,
   final raw = jsonDecode(body.replaceFirst('\ufeff', '').trim());
   if (raw is! Map ||
       (!snapshot && raw['success'] != true) ||
-      (snapshot && raw['source'] != superflixOrigin))
-    {
-throw const FormatException('Invalid live directory');
-}
+      (snapshot && raw['source'] != superflixOrigin)) {
+    throw const FormatException('Invalid live directory');
+  }
   final data = raw[snapshot ? 'items' : 'data'];
   if (data is! List) throw const FormatException('Missing live items');
   final rows = <Map<String, dynamic>>[];
@@ -77,18 +76,18 @@ throw const FormatException('Invalid live directory');
     final v = Map<String, dynamic>.from(item);
     if ([false, 0, '0'].contains(v['is_active']) ||
         [true, 1, '1'].contains(v['is_nsfw']) ||
-        ['adulto', 'adultos', 'xxx'].contains('${v['category']}'.toLowerCase()))
-      {
-continue;
-}
+        ['adulto', 'adultos', 'xxx']
+            .contains('${v['category']}'.toLowerCase())) {
+      continue;
+    }
     final uri = Uri.tryParse('${v[events ? 'play_event_url' : 'embed_url']}');
     if (uri == null ||
         uri.scheme != 'https' ||
         uri.origin != superflixOrigin ||
         uri.userInfo.isNotEmpty ||
         !uri.path.startsWith(events ? '/eventos/' : '/canal/')) {
-continue;
-}
+      continue;
+    }
     final name = v[events ? 'title' : 'name'];
     if (name is! String || name.trim().isEmpty) continue;
     rows.add(v);
@@ -129,30 +128,27 @@ class SuperflixService {
   }
 
   Future<List<Map<String, dynamic>>> _snapshot(bool events) async {
-    if (snapshotLoader != null)
-      {
-return _readSnapshot(await snapshotLoader!(events), events);
-}
+    if (snapshotLoader != null) {
+      return _readSnapshot(await snapshotLoader!(events), events);
+    }
     final client = clientFactory();
     try {
       final response = await client
           .get(Uri.parse(
               'https://raw.githubusercontent.com/bichocutela/CINESHOW/live-data/superflix_${events ? 'events' : 'channels'}.json'))
           .timeout(const Duration(seconds: 12));
-      if (response.statusCode == 200)
-        {
-return _readSnapshot(utf8.decode(response.bodyBytes), events);
-}
+      if (response.statusCode == 200) {
+        return _readSnapshot(utf8.decode(response.bodyBytes), events);
+      }
     } catch (_) {
       /* A verified bundled directory remains the last fallback. */
     } finally {
       client.close();
     }
     final bundled = await cachedLive(events: events);
-    if (bundled.isEmpty)
-      {
-throw StateError('Não foi possível carregar a lista de reserva.');
-}
+    if (bundled.isEmpty) {
+      throw StateError('Não foi possível carregar a lista de reserva.');
+    }
     return bundled;
   }
 

@@ -95,18 +95,16 @@ class TvAbertaService {
   Future<String> novelData() async {
     if (_novels != null &&
         _at != null &&
-        DateTime.now().difference(_at!) < const Duration(minutes: 30))
-      {
-return _novels!;
-}
+        DateTime.now().difference(_at!) < const Duration(minutes: 30)) {
+      return _novels!;
+    }
     return _pending ??= (() async {
       final prefs = await SharedPreferences.getInstance();
       try {
         final body = await _get('/json/novelas.json');
-        if (jsonDecode(body) is! List)
-          {
-throw const FormatException('Novelas inválidas');
-}
+        if (jsonDecode(body) is! List) {
+          throw const FormatException('Novelas inválidas');
+        }
         _novels = body;
         _at = DateTime.now();
         await prefs.setString('cineshow.tvaberta.novelas.v1', body);
@@ -146,8 +144,8 @@ throw const FormatException('Novelas inválidas');
           uri.scheme == 'https' &&
           uri.host.isNotEmpty &&
           uri.userInfo.isEmpty) {
-base = uri.origin;
-}
+        base = uri.origin;
+      }
     } catch (_) {/* Retain the last published player origin. */}
     return parseTvEpisodes(data, base: base);
   }
@@ -159,10 +157,9 @@ base = uri.origin;
     if (cached && body == null) return [];
     if (body == null) {
       body = await _get('/json/canais.json');
-      if (jsonDecode(body) is! List)
-        {
-throw const FormatException('Canais inválidos');
-}
+      if (jsonDecode(body) is! List) {
+        throw const FormatException('Canais inválidos');
+      }
       await prefs.setString('cineshow.tvaberta.channels.v1', body);
     }
     return (jsonDecode(body) as List)
@@ -184,14 +181,15 @@ throw const FormatException('Canais inválidos');
           !['http', 'https'].contains(uri.scheme) ||
           uri.host.isEmpty ||
           uri.userInfo.isNotEmpty) {
-return;
-}
+        return;
+      }
       urls.putIfAbsent(
           uri.toString(),
           () => {
                 'url': uri.toString(),
                 'referrer': referer ?? '$tvAbertaOrigin/',
                 'user_agent': 'CINESHOW/0.6.1',
+                'origin': Uri.parse(referer ?? tvAbertaOrigin).origin,
                 'native': native
               });
     }
@@ -206,12 +204,11 @@ return;
         if (raw is String) {
           final probe =
               await _probe(raw, '${data['referer'] ?? '$tvAbertaOrigin/'}');
-          if (probe != null)
-            {
-add(probe.$1,
+          if (probe != null) {
+            add(probe.$1,
                 referer: '${data['referer'] ?? '$tvAbertaOrigin/'}',
                 native: probe.$2);
-}
+          }
         }
       } else {
         for (final url in (data['urls'] as List? ?? [data['url']])) {
@@ -244,8 +241,8 @@ add(probe.$1,
     if (uri == null ||
         !['http', 'https'].contains(uri.scheme) ||
         uri.userInfo.isNotEmpty) {
-return null;
-}
+      return null;
+    }
     final client = http.Client();
     try {
       final request = http.Request('GET', uri)
@@ -264,17 +261,16 @@ return null;
       }
       final prefix = latin1.decode(bytes);
       if (prefix.startsWith('#EXTM3U') ||
-          (bytes.length >= 8 && prefix.substring(4, 8) == 'ftyp'))
-        {
-return (url, true);
-}
+          (bytes.length >= 8 && prefix.substring(4, 8) == 'ftyp')) {
+        return (url, true);
+      }
       final hls = RegExp(r'''https?://[^\s"'<>]+\.m3u8[^\s"'<>]*''')
           .firstMatch(prefix)?[0];
       if (hls != null) return (hls, true);
       if (prefix.toLowerCase().contains('<iframe') ||
           prefix.toLowerCase().contains('<video')) {
-return (url, false);
-}
+        return (url, false);
+      }
       return null;
     } finally {
       client.close();

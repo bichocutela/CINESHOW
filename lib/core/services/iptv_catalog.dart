@@ -27,6 +27,8 @@ class TvChannel {
         posterUrl: logo,
         streamUrl: streams[index]['url'] as String,
         streamHeaders: {
+          if (streams[index]['origin'] is String)
+            'Origin': streams[index]['origin'] as String,
           if (streams[index]['referrer'] is String)
             'Referer': streams[index]['referrer'] as String,
           if (streams[index]['user_agent'] is String)

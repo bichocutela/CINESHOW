@@ -5,8 +5,8 @@ String canonicalPlayerUrl(String value) {
   if (uri == null ||
       !['http', 'https'].contains(uri.scheme) ||
       uri.userInfo.isNotEmpty) {
-return value;
-}
+    return value;
+  }
   if (uri.host != 'redeflixapi.store') return value;
   return uri
       .replace(scheme: 'https', host: 'redeflixapi.bar', port: 443)
