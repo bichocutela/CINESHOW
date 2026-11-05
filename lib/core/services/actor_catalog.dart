@@ -49,7 +49,6 @@ class ActorCatalog {
   final _ended = <String>{};
   List<MediaItem> _items = [];
   String _actor = '';
-  String _actor = '';
   String normalize(String name) =>
       name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
@@ -101,19 +100,19 @@ class ActorCatalog {
       _ended.clear();
       _items = await titles(name);
       for (final value in archiveUrls) {
-        fi{
-nal uri = Uri.tryParse(canonicalSourceUrl(value));
-}
-        if (uri == null || uri.scheme != 'https' || uri.userInfo.isNotEmpty)
+        final uri = Uri.tryParse(canonicalSourceUrl(value));
+        if (uri == null || uri.scheme != 'https' || uri.userInfo.isNotEmpty) {
           continue;
+        }
         final provider = origins.entries
             .where((v) => v.value == uri.origin)
             .firstOrNull
             ?.key;
-        if (!['rtfilmes', 'tontons', {
-'amyflix'].contains(provider) ||
+        if (!['rtfilmes', 'tontons', 'amyflix'].contains(provider) ||
             !RegExp(r'^/(?:melhores-elenco|cast|elenco|atores)/[^/]+/?$')
-                .hasMatch(uri.path)) continue;
+                .hasMatch(uri.path)) {
+          continue;
+        }
         _paths.putIfAbsent(
             provider!, () => '${uri.path.replaceFirst(RegExp(r'/$'), '')}/');
       }
@@ -133,13 +132,11 @@ nal uri = Uri.tryParse(canonicalSourceUrl(value));
       try {
         final html = await session
             .get('${entry.value}${page == 1 ? '' : 'page/$page/'}');
-}
         final rows = parseActorArchive(html, name, entry.key);
-        _p{
-ages[entry.key] = page + 1;
-}
-        if (!html.contains('${entry.value}page/${page + 1}/'))
+        _pages[entry.key] = page + 1;
+        if (!html.contains('${entry.value}page/${page + 1}/')) {
           _ended.add(entry.key);
+        }
         return rows;
       } catch (_) {
         errors.add(entry.key);
