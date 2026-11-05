@@ -353,6 +353,8 @@ class LiveCatalog {
     await p.setString(_key, jsonEncode(items.map((i) => i.toJson()).toList()));
   }
 
+  List<MediaItem> parseProviderCards(String html, String provider) => _cards(html, provider);
+
   List<MediaItem> _cards(String html, String provider,
       {bool thematic = false}) {
     final result = <MediaItem>[];
@@ -505,9 +507,14 @@ class LiveCatalog {
       } else {
         final sources = [...existing.sources];
         for (final s in i.sources) {
-          if (!sources.any(
-              (v) => v.provider == s.provider && v.sourceId == s.sourceId)) {
+          final index = sources.indexWhere((v) => v.provider == s.provider && v.sourceId == s.sourceId);
+          if (index < 0) {
             sources.add(s);
+          } else {
+            final previous = sources[index];
+            sources[index] = MediaSource(provider: s.provider, sourceId: s.sourceId,
+              pageUrl: s.pageUrl, posterUrl: s.posterUrl ?? previous.posterUrl,
+              imdbId: s.imdbId ?? previous.imdbId, originalTitle: s.originalTitle ?? previous.originalTitle);
           }
         }
         groups[key] = MediaItem(

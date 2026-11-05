@@ -29,6 +29,8 @@ List<MediaItem> parseSuperflixCards(String html,
         continue;
       }
       final title = utf8.decode(base64Decode(a['data-title']!));
+      final imdbIds = RegExp(r'''data-copy=["'](tt\d{7,10})["']''').allMatches(block).map((v) => v[1]!).toSet();
+      final imdbId = imdbIds.length == 1 ? imdbIds.single : null;
       final image = attributes(
           RegExp(r'<img\b[^>]*>').firstMatch(block)?[0] ?? '')['src'];
       final year = RegExp(r'<span[^>]*>\s*((?:19|20)\d{2})\s*</span>')
@@ -53,6 +55,7 @@ List<MediaItem> parseSuperflixCards(String html,
             MediaSource(
                 provider: 'superflix',
                 sourceId: uri.pathSegments.lastWhere((v) => v.isNotEmpty),
+                imdbId: imdbId,
                 pageUrl: uri.toString(),
                 posterUrl: image)
           ]);

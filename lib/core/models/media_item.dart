@@ -5,19 +5,23 @@ class MediaSource {
       {required this.provider,
       required this.sourceId,
       required this.pageUrl,
-      this.posterUrl});
+      this.posterUrl, this.imdbId, this.originalTitle});
   final String provider, sourceId, pageUrl;
-  final String? posterUrl;
+  final String? posterUrl, imdbId, originalTitle;
   factory MediaSource.fromJson(Map<String, dynamic> j) => MediaSource(
       provider: j['provider'] as String,
       sourceId: j['source_id'].toString(),
       pageUrl: canonicalSourceUrl(j['page_url'] as String),
-      posterUrl: j['poster_url'] as String?);
+      posterUrl: j['poster_url'] as String?,
+      imdbId: j['imdb_id'] is String && RegExp(r'^tt\d{7,10}$').hasMatch(j['imdb_id'] as String) ? j['imdb_id'] as String : null,
+      originalTitle: j['original_title'] as String?);
   Map<String, dynamic> toJson() => {
         'provider': provider,
         'source_id': sourceId,
         'page_url': pageUrl,
-        'poster_url': posterUrl
+        'poster_url': posterUrl,
+        if (imdbId != null) 'imdb_id': imdbId,
+        if (originalTitle != null) 'original_title': originalTitle
       };
   String get label => switch (provider) {
         'rtfilmes' => 'Pobreflix',

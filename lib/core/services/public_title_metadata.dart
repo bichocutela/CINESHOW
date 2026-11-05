@@ -68,7 +68,14 @@ Map<String, dynamic> publishedCredits(String html) {
     final role = RegExp(r'''<div[^>]+class=["']caracter["'][^>]*>(.*?)</div>''',
             dotAll: true)
         .firstMatch(block)?[1];
-    details.add({'name': plain(name), 'role': plain(role ?? '')});
+    String? archive;
+    for (final link in RegExp(r'<a\b([^>]*)>(.*?)</a>', dotAll: true).allMatches(block)) {
+      if (normalizedTitle(link[2]!) == normalizedTitle(name)) {
+        archive = attributes(link[1]!)['href'];
+        if (archive != null) break;
+      }
+    }
+    details.add({'name': plain(name), 'role': plain(role ?? ''), if (archive != null) 'archive_url': archive});
   }
   return {
     'cast': mergeCast(cast),

@@ -125,14 +125,14 @@ jobs:
           generate_release_notes: true
           body: |
             Atualização oficial com a mesma assinatura permanente.
-            - SuperFlix e Agenda: lista verificada de reserva, data de atualização e botão de tentar novamente.
-            - Diretórios públicos de reserva atualizados automaticamente, sem guardar links privados de vídeo.
-            - TV Aberta Online em Ao Vivo e como fonte de novelas, com temporadas e capítulos.
-            - Links dos canais renovados na abertura e servidores alternativos publicados pela fonte.
-            - IMDb em /10, Tomatometer e Popcornmeter em percentuais separados.
-            - Leitura do elenco publicado nas fontes e lista completa com os papéis disponíveis.
-            - Migração dos players RedeFlix do domínio descontinuado para o endereço anunciado.
-            Avaliações e disponibilidade variam por fonte. IMDb reproduzido por terceiros é identificado como tal.
+            - Filmes e séries do ator pesquisados nas fontes ao clicar, sem depender de fichas visitadas.
+            - Busca por elenco com páginas, atualização e tentativa das fontes pendentes.
+            - Ignora recomendações laterais que não pertencem ao elenco selecionado.
+            - Preserva os IDs IMDb publicados no catálogo SuperFlix e atualiza entradas antigas do cache.
+            - Usa título original e busca de identidade confirmada por nome, ano e tipo nas informações.
+            - Informações indisponíveis são consultadas novamente em prazo menor.
+            Mantém TV Aberta, novelas, listas de reserva, avaliações separadas e correção de domínio dos players.
+            A cobertura depende dos créditos e catálogos publicados pelas fontes. Sem teste físico Android.
             Abra Sobre e verifique a atualização para baixar pelo próprio CINESHOW.
     permissions:
       contents: write
