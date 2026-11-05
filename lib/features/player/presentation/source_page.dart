@@ -14,10 +14,12 @@ class SourcePage extends StatefulWidget {
       required this.title,
       required this.url,
       this.headers = const {},
-      this.embedded = false});
+      this.embedded = false,
+      this.onNext});
   final String title, url;
   final Map<String, String> headers;
   final bool embedded;
+  final Future<void> Function()? onNext;
   @override
   State<SourcePage> createState() => _SourcePageState();
 }
@@ -29,6 +31,7 @@ class _SourcePageState extends State<SourcePage> {
       : widget.url);
   int progress = 0;
   bool failed = false;
+  bool advancing = false;
   Widget? fullscreenView;
   VoidCallback? hideFullscreen;
   @override
@@ -119,6 +122,19 @@ class _SourcePageState extends State<SourcePage> {
     }
   }
 
+  Future<void> _next() async {
+    if (advancing || widget.onNext == null) return;
+    setState(() => advancing = true);
+    try {
+      await widget.onNext!();
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Não foi possível abrir o próximo capítulo.')));
+    } finally {
+      if (mounted) setState(() => advancing = false);
+    }
+  }
+
   Future<void> _external() async {
     try {
       await launchUrl(Uri.parse(widget.url),
@@ -166,6 +182,10 @@ class _SourcePageState extends State<SourcePage> {
                 ),
                 title: Text(widget.title),
                 actions: [
+                  if (widget.onNext != null) IconButton(
+                      tooltip: 'Próximo capítulo',
+                      onPressed: advancing ? null : _next,
+                      icon: const Icon(Icons.skip_next)),
                   IconButton(
                       tooltip: 'Abrir na fonte',
                       onPressed: _external,

@@ -24,6 +24,7 @@ class MediaSource {
         'tontons' => 'TopFlix',
         'xonados' => 'Xonados',
         'novelasflix' => 'Novelasflix',
+        'amyflix' => 'Amyflix',
         _ => provider
       };
 }
@@ -37,6 +38,8 @@ class MediaItem {
       required this.year,
       required this.durationMinutes,
       this.posterUrl,
+      this.audio = '',
+      this.tags = const [],
       this.backdropUrl,
       this.streamUrl,
       this.streamHeaders = const {},
@@ -44,6 +47,8 @@ class MediaItem {
       this.kind = 'movie',
       this.sources = const []});
   final String id, title, description, genre, kind;
+  final String audio;
+  final List<String> tags;
   final int year, durationMinutes;
   final String? posterUrl, backdropUrl, streamUrl;
   final Map<String, String> streamHeaders;
@@ -62,6 +67,8 @@ class MediaItem {
           Map<String, String>.from((j['stream_headers'] as Map?) ?? {}),
       backdropUrl: j['backdrop_url'] as String?,
       posterUrl: j['poster_url'] as String?,
+      audio: (j['audio'] as String?) ?? '',
+      tags: ((j['tags'] as List?) ?? []).whereType<String>().toList(),
       kind: (j['kind'] as String?) ?? 'movie',
       isSeries: j['kind'] == 'series',
       sources: ((j['sources'] as List?) ?? [])
@@ -72,6 +79,8 @@ class MediaItem {
         'title': title,
         'description': description,
         'genre': genre,
+        'audio': audio,
+        'tags': tags,
         'year': year,
         'poster_url': posterUrl,
         'stream_url': streamUrl,
@@ -87,6 +96,8 @@ class MediaItem {
           id: id,
           title: title,
           description: description,
+          audio: audio,
+          tags: tags,
           genre: genre,
           year: year,
           durationMinutes: durationMinutes,

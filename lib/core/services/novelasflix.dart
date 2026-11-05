@@ -37,14 +37,12 @@ List<MediaItem> parseNovelasflixCards(String html) {
   for (final block
       in RegExp(r'<article\b.*?</article>', dotAll: true).allMatches(html)) {
     final link = RegExp(r'<a\b[^>]*>').firstMatch(block[0]!);
-    final title = RegExp(r'<h3[^>]*>(.*?)</h3>', dotAll: true)
-        .firstMatch(block[0]!)?[1];
+    final title =
+        RegExp(r'<h3[^>]*>(.*?)</h3>', dotAll: true).firstMatch(block[0]!)?[1];
     final img = RegExp(r'<img\b[^>]*>').firstMatch(block[0]!);
     final image = attributes(img?[0] ?? '');
-    final item = novelasflixItem(
-        attributes(link?[0] ?? '')['href'] ?? '',
-        title ?? image['alt'] ?? '',
-        image['data-src']);
+    final item = novelasflixItem(attributes(link?[0] ?? '')['href'] ?? '',
+        title ?? image['alt'] ?? '', image['data-src']);
     if (item != null) found[item.id] = item;
   }
   return found.values.toList();
@@ -54,8 +52,8 @@ List<MediaItem> parseNovelasflixSearch(String json) {
   final raw = jsonDecode(json) as Map;
   final items = <MediaItem>[];
   for (final row in ((raw['data'] as List?) ?? []).whereType<Map>()) {
-    final item = novelasflixItem('${row['url']}', '${row['title']}',
-        row['poster'] as String?,
+    final item = novelasflixItem(
+        '${row['url']}', '${row['title']}', row['poster'] as String?,
         description: row['sinopse'] as String? ?? '');
     if (item != null) items.add(item);
   }
@@ -64,7 +62,8 @@ List<MediaItem> parseNovelasflixSearch(String json) {
 
 List<Map<String, dynamic>> parseNovelasflixEpisodes(String html) {
   final items = <String, Map<String, dynamic>>{};
-  for (final link in RegExp(r'<a\b[^>]*href=["\x27]([^"\x27]+/episodio/[^"\x27]+)["\x27][^>]*>(.*?)</a>',
+  for (final link in RegExp(
+          r'<a\b[^>]*href=["\x27]([^"\x27]+/episodio/[^"\x27]+)["\x27][^>]*>(.*?)</a>',
           dotAll: true)
       .allMatches(html)) {
     final uri = Uri.tryParse(link[1]!.replaceAll('&amp;', '&'));
@@ -84,6 +83,8 @@ List<Map<String, dynamic>> parseNovelasflixEpisodes(String html) {
   return items.values.toList()
     ..sort((a, b) {
       final season = (a['season'] as int).compareTo(b['season'] as int);
-      return season != 0 ? season : (a['number'] as int).compareTo(b['number'] as int);
+      return season != 0
+          ? season
+          : (a['number'] as int).compareTo(b['number'] as int);
     });
 }

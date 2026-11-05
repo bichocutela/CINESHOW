@@ -128,7 +128,10 @@ jobs:
             - Corrige a área dos controles sobre a navegação do Android.
             - Categorias de filmes e séries acima de Explore o catálogo.
             - Catálogo por páginas com cursores independentes por fonte.
-            - Novelasflix como fonte adicional; capas aproveitadas dos dados publicados.
+            - Novelasflix e Amyflix como fontes adicionais, com dados publicados pelos sites.
+            - Selos Dublado/Legendado e filtro LGBT+/GL para coleções identificadas pela fonte.
+            - Continuar assistindo com capítulo e posição no player nativo.
+            - Próximo capítulo automático no player nativo e botão em players externos.
             - Baixar filme ou capítulo quando a fonte disponibiliza MP4 direto.
             - Sobre > Meus downloads: progresso, abrir e excluir arquivos.
             - Sino com novidades e acompanhamento de capítulos ao abrir e enquanto o app está em uso.

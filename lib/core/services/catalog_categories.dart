@@ -18,6 +18,7 @@ const catalogGenres = [
   CatalogCategory('Romance', 'romance'),
   CatalogCategory('Suspense', 'thriller'),
   CatalogCategory('Terror', 'terror'),
+  CatalogCategory('LGBT+ / GL', 'amy-gl'),
 ];
 
 List<CatalogCategory> categoriesForSection(String section) {
@@ -31,8 +32,5 @@ List<CatalogCategory> categoriesForSection(String section) {
   ];
 }
 
-String? categoryKind(String section) => switch (section) {
-  'Filme' => 'movie',
-  'Série' => 'series',
-  _ => null
-};
+String? categoryKind(String section) =>
+    switch (section) { 'Filme' => 'movie', 'Série' => 'series', _ => null };

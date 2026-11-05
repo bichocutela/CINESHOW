@@ -14,8 +14,11 @@ class CatalogNotices {
     final prefs = await SharedPreferences.getInstance();
     try {
       return ((jsonDecode(prefs.getString(_events) ?? '[]')) as List)
-          .map((v) => Map<String, dynamic>.from(v as Map)).toList();
-    } catch (_) { return []; }
+          .map((v) => Map<String, dynamic>.from(v as Map))
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   Future<void> refreshBadge() async {
@@ -24,7 +27,9 @@ class CatalogNotices {
 
   Future<void> markRead() async {
     final rows = await events();
-    for (final row in rows) { row['read'] = true; }
+    for (final row in rows) {
+      row['read'] = true;
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_events, jsonEncode(rows));
     unread.value = 0;
@@ -34,7 +39,9 @@ class CatalogNotices {
     if (next.isEmpty) return;
     final rows = await events();
     final ids = rows.map((v) => v['id']).toSet();
-    final merged = [...next.where((v) => !ids.contains(v['id'])), ...rows].take(100).toList();
+    final merged = [...next.where((v) => !ids.contains(v['id'])), ...rows]
+        .take(100)
+        .toList();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_events, jsonEncode(merged));
     await refreshBadge();
@@ -48,11 +55,16 @@ class CatalogNotices {
     final next = <Map<String, dynamic>>[];
     if (stored != null) {
       for (final item in items) {
-        if (!seen.contains(item.id)) next.add({
-          'id': 'catalog:${item.id}', 'title': item.title,
-          'body': 'Novo no catálogo · ${item.typeLabel}${item.year > 0 ? ' · ${item.year}' : ''}',
-          'item': item.toJson(), 'created': DateTime.now().toIso8601String(), 'read': false
-        });
+        if (!seen.contains(item.id))
+          next.add({
+            'id': 'catalog:${item.id}',
+            'title': item.title,
+            'body':
+                'Novo no catálogo · ${item.typeLabel}${item.year > 0 ? ' · ${item.year}' : ''}',
+            'item': item.toJson(),
+            'created': DateTime.now().toIso8601String(),
+            'read': false
+          });
       }
     }
     seen.addAll(items.map((v) => v.id));
@@ -63,7 +75,8 @@ class CatalogNotices {
   Future<List<Map<String, dynamic>>> watched() async {
     final prefs = await SharedPreferences.getInstance();
     return ((jsonDecode(prefs.getString(_watch) ?? '[]')) as List)
-        .map((v) => Map<String, dynamic>.from(v as Map)).toList();
+        .map((v) => Map<String, dynamic>.from(v as Map))
+        .toList();
   }
 
   Future<bool> isFollowing(String id) async =>
@@ -75,16 +88,19 @@ class CatalogNotices {
   Future<bool> toggle(MediaItem item, MediaSource source,
       List<Map<String, dynamic>> chapters) async {
     final rows = await watched();
-    final existing = rows.where((v) => (v['item'] as Map)['id'] == item.id).toList();
+    final existing =
+        rows.where((v) => (v['item'] as Map)['id'] == item.id).toList();
     final prefs = await SharedPreferences.getInstance();
     if (existing.isNotEmpty) {
       rows.removeWhere((v) => (v['item'] as Map)['id'] == item.id);
     } else {
-      if (rows.length >= 10) throw StateError('Acompanhe até 10 títulos por vez.');
+      if (rows.length >= 10)
+        throw StateError('Acompanhe até 10 títulos por vez.');
       rows.add({'item': item.toJson(), 'source': source.toJson()});
       await prefs.remove(_chapterKey(source));
       if (chapters.isNotEmpty) {
-        await prefs.setStringList(_chapterKey(source), chapters.map((e) => '${e['id']}').toList());
+        await prefs.setStringList(
+            _chapterKey(source), chapters.map((e) => '${e['id']}').toList());
       }
     }
     await prefs.setString(_watch, jsonEncode(rows));
@@ -95,7 +111,8 @@ class CatalogNotices {
       List<Map<String, dynamic>> chapters) async {
     if (chapters.isEmpty) return;
     final rows = await watched();
-    if (!rows.any((v) => (v['item'] as Map)['id'] == item.id &&
+    if (!rows.any((v) =>
+        (v['item'] as Map)['id'] == item.id &&
         (v['source'] as Map)['provider'] == source.provider)) return;
     final prefs = await SharedPreferences.getInstance();
     final key = _chapterKey(source);
@@ -106,9 +123,14 @@ class CatalogNotices {
       for (final chapter in chapters) {
         final id = '${chapter['id']}';
         if (seen.contains(id)) continue;
-        next.add({'id': 'chapter:${source.provider}:${source.sourceId}:$id',
-          'title': item.title, 'body': '${source.label} · ${chapter['title']}',
-          'item': item.toJson(), 'created': DateTime.now().toIso8601String(), 'read': false});
+        next.add({
+          'id': 'chapter:${source.provider}:${source.sourceId}:$id',
+          'title': item.title,
+          'body': '${source.label} · ${chapter['title']}',
+          'item': item.toJson(),
+          'created': DateTime.now().toIso8601String(),
+          'read': false
+        });
       }
     }
     seen.addAll(chapters.map((e) => '${e['id']}'));

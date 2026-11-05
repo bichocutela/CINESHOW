@@ -8,9 +8,12 @@ import '../widgets/playback_controls.dart';
 import '../../downloads/downloads_page.dart';
 
 class PlayerPage extends StatefulWidget {
-  const PlayerPage({super.key, required this.media, this.playbackGateway});
+  const PlayerPage({super.key, required this.media, this.playbackGateway,
+      this.onNext, this.initialFullscreen = false});
   final MediaItem media;
   final PlaybackGateway? playbackGateway;
+  final Future<void> Function(bool fullscreen)? onNext;
+  final bool initialFullscreen;
   @override
   State<PlayerPage> createState() => _PlayerPageState();
 }
@@ -23,6 +26,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   String? error;
   bool loading = true, fullscreen = false;
   int generation = 0;
+  bool advancing = false, endAttempted = false, handingOffFullscreen = false;
   bool get live => widget.media.kind == 'live';
   @override
   void initState() {
@@ -33,6 +37,11 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       (_) => unawaited(_save()),
     );
     _initialize();
+    if (widget.initialFullscreen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !fullscreen) _fullscreen();
+      });
+    }
   }
 
   Future<void> _initialize() async {
@@ -90,6 +99,30 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
         loading = false;
       }
     });
+    final value = controller?.value;
+    if (value != null && value.isCompleted && !loading &&
+        error == null && widget.onNext != null && !endAttempted) {
+      endAttempted = true;
+      unawaited(_advance());
+    } else if (value != null && value.position < value.duration - const Duration(seconds: 1)) {
+      endAttempted = false;
+    }
+  }
+
+  Future<void> _advance() async {
+    if (advancing || widget.onNext == null) return;
+    setState(() => advancing = true);
+    handingOffFullscreen = fullscreen;
+    try {
+      await _save();
+      await widget.onNext!(fullscreen);
+    } catch (_) {
+      handingOffFullscreen = false;
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Não foi possível abrir o próximo capítulo. Tente novamente.')));
+    } finally {
+      if (mounted) setState(() => advancing = false);
+    }
   }
 
   Future<void> _save() async {
@@ -136,7 +169,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     unawaited(_save());
     controller?.removeListener(_changed);
     controller?.dispose();
-    if (fullscreen) {
+    if (fullscreen && !handingOffFullscreen) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       SystemChrome.setPreferredOrientations([]);
     }
@@ -159,10 +192,11 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                 title: Text(widget.media.title),
                 backgroundColor: Colors.black,
                 actions: [
-                  if (!live) IconButton(
-                      tooltip: 'Baixar vídeo',
-                      onPressed: () => downloadMedia(context, widget.media),
-                      icon: const Icon(Icons.download_outlined))
+                  if (!live)
+                    IconButton(
+                        tooltip: 'Baixar vídeo',
+                        onPressed: () => downloadMedia(context, widget.media),
+                        icon: const Icon(Icons.download_outlined))
                 ],
               ),
         body: SafeArea(
@@ -199,6 +233,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                                 c.value.isPlaying ? c.pause() : c.play(),
                             onSeek: c.seekTo,
                             onFullscreen: _fullscreen,
+                            onNext: widget.onNext == null || advancing ? null : () => unawaited(_advance()),
                             child: Center(
                                 child: AspectRatio(
                               aspectRatio: c.value.aspectRatio > 0

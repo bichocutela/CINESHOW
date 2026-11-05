@@ -20,13 +20,15 @@ class PlaybackControls extends StatefulWidget {
       this.fullscreen = false,
       this.live = false,
       this.seekable = true,
-      this.buffering = false});
+      this.buffering = false,
+      this.onNext});
   final Widget child;
   final Duration position, duration;
   final bool playing, fullscreen, live, seekable, buffering;
   final Future<void> Function() onToggle;
   final Future<void> Function(Duration) onSeek;
   final VoidCallback onFullscreen;
+  final VoidCallback? onNext;
   @override
   State<PlaybackControls> createState() => _PlaybackControlsState();
 }
@@ -200,6 +202,10 @@ class _PlaybackControlsState extends State<PlaybackControls> {
                                             : _time(widget.position),
                                     style: const TextStyle(
                                         color: Colors.white, fontSize: 12))),
+                            if (widget.onNext != null)
+                              IconButton(tooltip: 'Próximo capítulo',
+                                  onPressed: widget.onNext,
+                                  icon: const Icon(Icons.skip_next), color: Colors.white),
                             IconButton(
                                 tooltip: widget.fullscreen
                                     ? 'Sair da tela cheia'

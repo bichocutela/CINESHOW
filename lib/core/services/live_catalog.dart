@@ -8,11 +8,11 @@ import 'source_origins.dart';
 import 'source_html.dart';
 import 'novelasflix.dart';
 import 'catalog_categories.dart';
+import 'audio_metadata.dart';
 export 'source_html.dart' show plain, attributes;
 export 'source_origins.dart' show origins;
 
 const apiBase = String.fromEnvironment('CINESHOW_API_URL');
-
 
 class SourceSession {
   SourceSession(this.origin);
@@ -24,6 +24,7 @@ class SourceSession {
         path.startsWith('https://') ? path : '$origin$path'));
     if (uri.origin != origin) throw StateError('Origem inválida');
     final headers = <String, String>{
+      'User-Agent': 'CINESHOW/0.5.0',
       if (_cookies.isNotEmpty)
         'Cookie': _cookies.entries.map((e) => '${e.key}=${e.value}').join('; ')
     };
@@ -74,6 +75,7 @@ class LiveCatalog {
       : sessionFactory = sessionFactory ?? SourceSession.new;
   final SourceSession Function(String) sessionFactory;
   final feeds = <String, _CatalogFeed>{};
+  final amyThemedIds = <String>{};
   final _key = 'cineshow.catalog.v1';
   final categoryCache = <String, CatalogResult>{};
   Future<List<MediaItem>> cached() async {
@@ -110,6 +112,11 @@ class LiveCatalog {
         } catch (_) {
           // Keep the backend catalog when this additional source is unavailable.
         }
+        try {
+          items = _merge([...items, ...await _amyflix(query: query)]);
+        } catch (_) {
+          // Keep available sources if Amyflix is temporarily unavailable.
+        }
         if (query == null) await _save(items);
         return CatalogResult(items, []);
       } finally {
@@ -120,6 +127,9 @@ class LiveCatalog {
     final batches = await Future.wait(origins.entries.map((entry) async {
       final session = sessionFactory(entry.value);
       try {
+        if (entry.key == 'amyflix' && query == null) {
+          return await _amyflix();
+        }
         if (entry.key == 'novelasflix') {
           return await _novelasflix(query: query);
         }
@@ -151,16 +161,44 @@ class LiveCatalog {
     return CatalogResult(filtered, errors);
   }
 
+  Future<List<MediaItem>> _amyflix({String? query}) async {
+    final session = sessionFactory(origins['amyflix']!);
+    final items = <MediaItem>[];
+    try {
+      if (query != null) return await _search(session, 'amyflix', query);
+      items.addAll(_cards(await session.get('/'), 'amyflix'));
+      final collections = await Future.wait([
+        '/genero/filmes-saficos-atualizados/',
+        '/genero/em-lancamento/',
+        '/genero/completo/'
+      ].map((path) async {
+        try {
+          return _cards(await session.get(path), 'amyflix', thematic: true);
+        } catch (_) {
+          return <MediaItem>[];
+        }
+      }));
+      for (final batch in collections) {
+        amyThemedIds.addAll(batch.expand((i) => i.sources.map((s) => s.sourceId)));
+        items.addAll(batch);
+      }
+      return items;
+    } finally {
+      session.close();
+    }
+  }
+
   Future<List<MediaItem>> _novelasflix({String? query}) async {
     Future<List<MediaItem>> search(String text) async {
       final session = sessionFactory(novelasflixOrigin);
       try {
-        return parseNovelasflixSearch(await session.get(
-            '/api/search?search=${Uri.encodeQueryComponent(text)}'));
+        return parseNovelasflixSearch(await session
+            .get('/api/search?search=${Uri.encodeQueryComponent(text)}'));
       } finally {
         session.close();
       }
     }
+
     if (query != null) return search(query);
     final session = sessionFactory(novelasflixOrigin);
     final items = <MediaItem>[];
@@ -170,11 +208,18 @@ class LiveCatalog {
       session.close();
     }
     final related = await Future.wait([
-      'Além do Tempo', 'Avenida Brasil', 'A Nobreza do Amor',
-      'Por Você', 'Quem Ama Cuida', 'A Fazenda 18'
+      'Além do Tempo',
+      'Avenida Brasil',
+      'A Nobreza do Amor',
+      'Por Você',
+      'Quem Ama Cuida',
+      'A Fazenda 18'
     ].map((title) async {
-      try { return await search(title); }
-      catch (_) { return <MediaItem>[]; }
+      try {
+        return await search(title);
+      } catch (_) {
+        return <MediaItem>[];
+      }
     }));
     items.addAll(related.expand((batch) => batch));
     return items;
@@ -192,8 +237,8 @@ class LiveCatalog {
 
   List<MediaItem> mergeItems(List<MediaItem> items) => _merge(items);
 
-  Future<CatalogPage> more({String? kind, CatalogCategory? category,
-      bool reset = false}) async {
+  Future<CatalogPage> more(
+      {String? kind, CatalogCategory? category, bool reset = false}) async {
     final slug = category?.slug;
     if (slug != null && !RegExp(r'^[a-z0-9-]+$').hasMatch(slug)) {
       throw StateError('Categoria inválida.');
@@ -202,8 +247,17 @@ class LiveCatalog {
     if (reset) feeds.remove(key);
     final feed = feeds.putIfAbsent(key, _CatalogFeed.new);
     final paths = <String, String>{};
-    for (final provider in ['rtfilmes', 'tontons']) {
-      if (slug != null) {
+    for (final provider in ['rtfilmes', 'tontons', 'amyflix']) {
+      if (slug == 'amy-gl') {
+        if (provider == 'amyflix') {
+          if (kind != 'series') paths['amyflix:gl-movie'] = '/genero/filmes-saficos-atualizados/';
+          if (kind != 'movie') {
+            paths['amyflix:gl-current'] = '/genero/em-lancamento/';
+            paths['amyflix:gl-complete'] = '/genero/completo/';
+          }
+        }
+      } else if (slug != null) {
+        if (provider == 'amyflix') continue;
         paths['$provider:category'] = '/melhores/$slug/';
       } else {
         if (kind != 'series') paths['$provider:movie'] = '/filme/';
@@ -216,13 +270,18 @@ class LiveCatalog {
       final provider = entry.key.split(':').first;
       final page = feed.pages[entry.key] ?? 1;
       final pagination = page == 1 ? '' : 'page/$page/';
-      final type = kind == 'series' ? 'tvshows' : kind == 'movie' ? 'movies' : null;
+      final type = kind == 'series'
+          ? 'tvshows'
+          : kind == 'movie'
+              ? 'movies'
+              : null;
       final query = slug != null && type != null ? '?post_type=$type' : '';
       final session = sessionFactory(origins[provider]!);
       try {
         final html = await session.get('${entry.value}$pagination$query');
-        final items = _cards(html, provider)
-            .where((i) => kind == null || i.kind == kind).toList();
+        final items = _cards(html, provider, thematic: slug == 'amy-gl')
+            .where((i) => kind == null || i.kind == kind)
+            .toList();
         feed.pages[entry.key] = page + 1;
         if (!html.contains('/page/${page + 1}/')) feed.ended.add(entry.key);
         return items;
@@ -235,8 +294,11 @@ class LiveCatalog {
     }));
     feed.items.addAll(batches.expand((v) => v));
     final merged = _merge(feed.items);
-    feed.items..clear()..addAll(merged);
-    return CatalogPage(merged, feed.ended.length < paths.length, errors.toSet().toList());
+    feed.items
+      ..clear()
+      ..addAll(merged);
+    return CatalogPage(
+        merged, feed.ended.length < paths.length, errors.toSet().toList());
   }
 
   Future<void> _save(List<MediaItem> items) async {
@@ -244,7 +306,7 @@ class LiveCatalog {
     await p.setString(_key, jsonEncode(items.map((i) => i.toJson()).toList()));
   }
 
-  List<MediaItem> _cards(String html, String provider) {
+  List<MediaItem> _cards(String html, String provider, {bool thematic = false}) {
     final result = <MediaItem>[];
     for (final m
         in RegExp(r'<article\b.*?</article>', dotAll: true).allMatches(html)) {
@@ -253,8 +315,10 @@ class LiveCatalog {
       final id = RegExp(r'(\d+)$').firstMatch(a['id'] ?? '')?[1];
       final title = RegExp(r'<h3[^>]*>\s*<a([^>]*)>(.*?)</a>', dotAll: true)
           .firstMatch(block);
-      if (id == null || title == null) continue;
-      final link = attributes(title[1]!)['href'] ?? '';
+      final heading = RegExp(r'<h3[^>]*>(.*?)</h3>', dotAll: true).firstMatch(block)?[1];
+      if (id == null || heading == null) continue;
+      final firstLink = RegExp(r'<a\b[^>]*>').firstMatch(block)?[0] ?? '';
+      final link = attributes(title?[1] ?? firstLink)['href'] ?? '';
       if (!link.startsWith('${origins[provider]}/filme/') &&
           !link.startsWith('${origins[provider]}/serie/')) {
         continue;
@@ -268,9 +332,11 @@ class LiveCatalog {
       final kind = link.contains('/serie/') ? 'series' : 'movie';
       result.add(MediaItem(
           id: '$provider:$id',
-          title: plain(title[2]!),
+          title: cleanAudioTitle(plain(title?[2] ?? heading)),
           description: '',
           genre: '',
+          audio: audioLabel('${catalogAudio(block)} ${provider == 'amyflix' ? audioLabel(plain(heading)) : ''}'),
+          tags: provider == 'amyflix' && (thematic || amyThemedIds.contains(id)) ? const ['LGBT+', 'GL / Sáfico'] : const [],
           year: years.isEmpty ? 0 : int.parse(years.last[0]!),
           durationMinutes: 0,
           posterUrl: catalogPoster(ia, origins[provider]!),
@@ -291,7 +357,7 @@ class LiveCatalog {
   Future<List<MediaItem>> _search(
       SourceSession session, String provider, String query) async {
     final html = await session.get('/');
-    final config = RegExp(r'var dtGonza=(\{.*?\});').firstMatch(html);
+    final config = RegExp(r'var\s+dtGonza\s*=\s*(\{.*?\});').firstMatch(html);
     if (config == null) throw StateError('Busca indisponível');
     final nonce = (jsonDecode(config[1]!) as Map)['nonce'];
     final response = jsonDecode(await session.get(
@@ -308,7 +374,9 @@ class LiveCatalog {
       final kind = link.contains('/serie/') ? 'series' : 'movie';
       return MediaItem(
           id: '$provider:${e.key}',
-          title: plain(j['title'] as String),
+          title: cleanAudioTitle(plain(j['title'] as String)),
+          audio: provider == 'amyflix' ? audioLabel(plain(j['title'] as String)) : '',
+          tags: provider == 'amyflix' && amyThemedIds.contains(e.key.toString()) ? const ['LGBT+', 'GL / Sáfico'] : const [],
           description: '',
           genre: '',
           year: int.tryParse('${(j['extra'] as Map?)?['date']}') ?? 0,
@@ -389,8 +457,10 @@ class LiveCatalog {
         groups[key] = MediaItem(
             id: existing.id,
             title: existing.title,
-            description: existing.description,
+            description: existing.description.isNotEmpty ? existing.description : i.description,
             genre: existing.genre,
+            audio: audioLabel('${existing.audio} ${i.audio}'),
+            tags: {...existing.tags, ...i.tags}.toList(),
             year: existing.year,
             durationMinutes: existing.durationMinutes,
             posterUrl: existing.posterUrl ?? i.posterUrl,
@@ -406,6 +476,8 @@ class LiveCatalog {
           title: i.title,
           description: i.description,
           genre: i.genre,
+          audio: i.audio,
+          tags: i.tags,
           year: i.year,
           durationMinutes: i.durationMinutes,
           posterUrl: i.posterUrl,
