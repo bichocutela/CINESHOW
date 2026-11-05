@@ -150,6 +150,12 @@ void main() {
       'details discovers alternate sources without a previous catalog visit',
       (tester) async {
     final item = daima('animesonlinecc', audio: 'Legendado');
+    SharedPreferences.setMockInitialValues({
+      'cineshow.titleinfo.v3:animesonlinecc:daima:${item.id}': jsonEncode({
+        'at': DateTime.now().toIso8601String(),
+        'data': {'plot': 'Sinopse de teste', 'title': item.title, 'year': 0}
+      })
+    });
     final result = Completer<MediaItem>();
     await tester.pumpWidget(MaterialApp(
         home: DetailsPage(
