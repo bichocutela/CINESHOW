@@ -53,11 +53,10 @@ class _ActorTitlesState extends State<ActorTitlesPage> {
             : 'Algumas fontes não responderam. Tente novamente para completar os resultados.';
       });
     } catch (_) {
-      if (mounted)
-        {
-setState(() => error =
+      if (mounted) {
+        setState(() => error =
             'Não foi possível consultar as fontes agora. Tente novamente.');
-}
+      }
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -80,9 +79,8 @@ setState(() => error =
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                   itemCount: items.length + 2,
                   itemBuilder: (context, index) {
-                    if (index == 0)
-                      {
-return Column(
+                    if (index == 0) {
+                      return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
@@ -96,10 +94,9 @@ return Column(
                                   child: Text(
                                       'Nenhum título foi encontrado nas fontes consultadas.')),
                           ]);
-}
-                    if (index == items.length + 1)
-                      {
-return more || error != null
+                    }
+                    if (index == items.length + 1) {
+                      return more || error != null
                           ? OutlinedButton.icon(
                               onPressed: loading ? null : () => _load(),
                               icon: const Icon(Icons.expand_more),
@@ -107,7 +104,7 @@ return more || error != null
                                   ? 'Carregar mais títulos'
                                   : 'Tentar fontes pendentes'))
                           : const SizedBox.shrink();
-}
+                    }
                     final item = items[index - 1];
                     return ListTile(
                         leading: posterSources(item).isEmpty

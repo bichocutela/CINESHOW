@@ -3,8 +3,6 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:cineshow/features/details/actor_titles_page.dart';
-import 'package:flutter/material.dart';
-import 'package:cineshow/features/details/actor_titles_page.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -203,12 +201,18 @@ void main() {
     expect(data['rtAudienceRating'], 97);
     expect(requests.where((v) => v.host == 'superflixapi.fun'), isEmpty);
   });
-  testWidgets('opening an actor page performs a fresh search with no visited titles', (tester) async {
+  testWidgets(
+      'opening an actor page performs a fresh search with no visited titles',
+      (tester) async {
     final calls = <String>[];
-    final service = ActorCatalog(sessionFactory: (origin) => ActorSession(origin, calls));
+    final service =
+        ActorCatalog(sessionFactory: (origin) => ActorSession(origin, calls));
     MediaItem? opened;
-    await tester.pumpWidget(MaterialApp(home: ActorTitlesPage(name: 'Tom Holland',
-      catalog: service, onOpen: (item) => opened = item)));
+    await tester.pumpWidget(MaterialApp(
+        home: ActorTitlesPage(
+            name: 'Tom Holland',
+            catalog: service,
+            onOpen: (item) => opened = item)));
     await tester.pumpAndSettle();
     expect(calls, hasLength(2));
     expect(find.text('Homem-Aranha: Um Novo Dia'), findsOneWidget);
@@ -216,20 +220,4 @@ void main() {
     expect(opened?.sources, hasLength(2));
     expect(tester.takeException(), isNull);
   });
-
-  testWidgets('opening an actor page performs a fresh search with no visited titles', (tester) async {
-    final calls = <String>[];
-    final service = ActorCatalog(sessionFactory: (origin) => ActorSession(origin, calls));
-    MediaItem? opened;
-    await tester.pumpWidget(MaterialApp(home: ActorTitlesPage(name: 'Tom Holland',
-      catalog: service, onOpen: (item) => opened = item)));
-    await tester.pumpAndSettle();
-    expect(calls, hasLength(2));
-    await tester.scrollUntilVisible(find.text('Homem-Aranha: Um Novo Dia'), 300);
-    expect(find.text('Homem-Aranha: Um Novo Dia'), findsOneWidget);
-    await tester.tap(find.text('Homem-Aranha: Um Novo Dia'));
-    expect(opened?.sources, hasLength(2));
-    expect(tester.takeException(), isNull);
-  });
-
 }

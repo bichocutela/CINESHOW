@@ -12,8 +12,8 @@ String? originalSourceTitle(String html) {
         '';
     if (!['titulooriginal', 'originaltitle']
         .contains(normalizedTitle(label).replaceAll('í', 'i'))) {
-continue;
-}
+      continue;
+    }
     final value = RegExp(r'<span\b[^>]*>(.*?)</span>', dotAll: true)
         .firstMatch(field[1]!)?[1];
     if (value == null) continue;
@@ -36,10 +36,11 @@ Map<String, dynamic>? matchImdbSuggestion(
     final id = row['id'];
     if (id is! String || !RegExp(r'^tt\d{7,10}$').hasMatch(id)) continue;
     final type = '${row['qid']}'.toLowerCase();
-    if (movie ? type != 'movie' : !['tvseries', 'tvminiseries'].contains(type))
-      {
-continue;
-}
+    if (movie
+        ? type != 'movie'
+        : !['tvseries', 'tvminiseries'].contains(type)) {
+      continue;
+    }
     if (expectedId != null) {
       if (id != expectedId) continue;
     } else {
