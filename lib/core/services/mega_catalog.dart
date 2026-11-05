@@ -11,7 +11,9 @@ List<MediaItem> parseMegaCards(String html) {
     final value = block[0]!;
     final className = attributes(value.split('>').first)['class'] ?? '';
     if (!className.contains('anx-card') && !className.contains('browse-card'))
-      continue;
+      {
+continue;
+}
     final a = RegExp(r'<a\b[^>]*>').firstMatch(value);
     final attr = attributes(a?[0] ?? '');
     final raw = attr['href'];

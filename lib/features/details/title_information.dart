@@ -30,7 +30,9 @@ class _TitleInformationState extends State<TitleInformation> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.item.id != widget.item.id ||
         oldWidget.source?.provider != widget.source?.provider ||
-        oldWidget.source?.sourceId != widget.source?.sourceId) _load();
+        oldWidget.source?.sourceId != widget.source?.sourceId) {
+_load();
+}
   }
 
   void _load({bool force = false}) {
@@ -45,8 +47,10 @@ class _TitleInformationState extends State<TitleInformation> {
       }
     } catch (_) {
       if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        {
+ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('Não foi possível abrir a consulta.')));
+}
     }
   }
 

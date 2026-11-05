@@ -277,17 +277,23 @@ class LiveCatalog {
         }
       } else {
         if (kind != 'series')
-          paths['$provider:movie'] =
+          {
+paths['$provider:movie'] =
               provider == 'megafilmes' || provider == 'superflix'
                   ? '/filmes'
                   : '/filme/';
+}
         if (kind != 'movie')
-          paths['$provider:series'] =
+          {
+paths['$provider:series'] =
               provider == 'megafilmes' || provider == 'superflix'
                   ? '/series'
                   : '/serie/';
+}
         if (kind != 'movie' && provider == 'superflix')
-          paths['superflix:dorama'] = '/doramas';
+          {
+paths['superflix:dorama'] = '/doramas';
+}
       }
     }
     final errors = <String>[];

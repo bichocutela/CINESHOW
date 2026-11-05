@@ -37,7 +37,9 @@ String sourceSynopsis(String html) {
         p[1]!.contains('<img') ||
         RegExp(r'^(Onde|Assistir|Que ano|Foi lançado|Confira)\b',
                 caseSensitive: false)
-            .hasMatch(text)) continue;
+            .hasMatch(text)) {
+continue;
+}
     paragraphs.add(text);
     if (paragraphs.length == 3) break;
   }
@@ -147,7 +149,9 @@ class TitleInformationService {
         try {
           final uri = Uri.parse(canonicalSourceUrl(source.pageUrl));
           if (uri.origin != origins[source.provider])
-            throw StateError('Fonte inválida.');
+            {
+throw StateError('Fonte inválida.');
+}
           final html = await read(uri);
           final plot = sourceSynopsis(html);
           if (plot.isNotEmpty) {
@@ -205,7 +209,9 @@ class TitleInformationService {
                 'genres'
               ]) {
                 if (data[field] != null && data[field] != '')
-                  result[field] = data[field];
+                  {
+result[field] = data[field];
+}
               }
               if ((data['plot'] as String? ?? '').isNotEmpty) {
                 result['plot'] = data['plot'];

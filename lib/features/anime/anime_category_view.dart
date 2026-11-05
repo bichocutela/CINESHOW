@@ -55,15 +55,19 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
       final data = await service.refresh();
       final rows = await service.notices();
       if (mounted)
-        setState(() {
+        {
+setState(() {
           recent = data['titles']!;
           episodes = data['episodes']!;
           notices = rows;
         });
+}
     } catch (_) {
       if (mounted)
-        setState(
+        {
+setState(
             () => error = 'A fonte não respondeu. Exibindo os dados salvos.');
+}
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -100,10 +104,12 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
       });
     } catch (_) {
       if (mounted && request == generation)
-        setState(() {
+        {
+setState(() {
           loading = false;
           error = 'Não foi possível carregar esta página. Tente novamente.';
         });
+}
     }
   }
 
@@ -123,8 +129,10 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
       if (mounted) await widget.onOpen(result.item, result.episode);
     } catch (_) {
       if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        {
+ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('Não foi possível abrir este anime.')));
+}
     } finally {
       if (mounted) setState(() => opening = false);
     }

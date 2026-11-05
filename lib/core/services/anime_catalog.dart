@@ -26,7 +26,9 @@ List<MediaItem> parseAnimeCards(String html, {bool episodes = false}) {
     final prefix = episodes ? '/episodio/' : '/anime/';
     if (uri.origin != animeOrigin ||
         !uri.path.startsWith(prefix) ||
-        uri.path == prefix) continue;
+        uri.path == prefix) {
+continue;
+}
     final img = attributes(RegExp(r'<img\b[^>]*>').firstMatch(text)?[0] ?? '');
     final picture = img['data-src'] ?? img['src'];
     final heading =
@@ -74,7 +76,9 @@ List<Map<String, dynamic>> parseAnimeEpisodes(String html) {
       if (raw == null) continue;
       final uri = Uri.parse('$animeOrigin/').resolve(raw);
       if (uri.origin != animeOrigin || !uri.path.startsWith('/episodio/'))
-        continue;
+        {
+continue;
+}
       final number = RegExp(r'Ep\s*-\s*(\d+)', caseSensitive: false)
           .firstMatch(plain(row[0]!));
       found[uri.toString()] = {
@@ -151,7 +155,9 @@ class AnimeCatalogService {
             episodes: true)
       };
       if (data.values.every((v) => v.isEmpty))
-        throw StateError('Catálogo anime indisponível.');
+        {
+throw StateError('Catálogo anime indisponível.');
+}
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
           'cineshow.anime.home.v1.$provider',
@@ -167,7 +173,9 @@ class AnimeCatalogService {
   Future<({List<MediaItem> items, bool more})> list(
       {String? letter, String query = '', int page = 1}) async {
     if (letter != null && !RegExp(r'^[A-Z]$').hasMatch(letter))
-      throw StateError('Letra inválida.');
+      {
+throw StateError('Letra inválida.');
+}
     if (page < 1) throw StateError('Página inválida.');
     if (provider == 'superflix') {
       final result = await SuperflixService().titles(
@@ -208,9 +216,13 @@ class AnimeCatalogService {
       MediaItem preview) async {
     final source = preview.sources.first;
     if (source.provider != 'animesonlinecc')
-      return (item: preview, episode: null);
+      {
+return (item: preview, episode: null);
+}
     if (!Uri.parse(source.pageUrl).path.startsWith('/episodio/'))
-      return (item: preview, episode: null);
+      {
+return (item: preview, episode: null);
+}
     final session = SourceSession(animeOrigin);
     try {
       final html = await session.get(source.pageUrl);

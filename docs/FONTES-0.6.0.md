@@ -41,3 +41,11 @@ Origem https://animesonlinecc.to.
 - Elenco clicável pesquisa apenas títulos cujo elenco já foi confirmado e indexado no aparelho. Não é uma filmografia completa do IMDb.
 - “Adicionados recentemente” ordena pela primeira detecção neste aparelho; não representa data de lançamento do filme.
 - Controles e listas de capítulos respeitam a área segura do Android; listas de todos os tipos são divididas em blocos de até 100.
+
+### Inventário complementar da documentação SuperFlix
+- /lista?category=filme|serie|anime|dorama&type=generos&format=json: gêneros.
+- Filtro de catálogo: genero=SLUG, IDs type=imdb|tmdb, ordem order=asc.
+- category=animes é alias publicado de anime.
+- category=busca é alias publicado de pesquisa para canais/eventos.
+- format=json ou html conforme documentação; category=guia exibe a grade.
+- Respostas verificadas nesta integração: 327 canais e 74 eventos, ambos HTTP 200; filmes e animes com 40 cards por página. Quantidades variam com a fonte.

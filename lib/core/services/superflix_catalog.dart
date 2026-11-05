@@ -22,7 +22,9 @@ List<MediaItem> parseSuperflixCards(String html,
       final uri = Uri.parse(utf8.decode(base64Decode(a['data-embed']!)));
       if (uri.origin != superflixOrigin ||
           !RegExp(r'^/(?:filme|serie)/(?:tt\d{7,10}|\d+)/?$')
-              .hasMatch(uri.path)) continue;
+              .hasMatch(uri.path)) {
+continue;
+}
       final title = utf8.decode(base64Decode(a['data-title']!));
       final image = attributes(
           RegExp(r'<img\b[^>]*>').firstMatch(block)?[0] ?? '')['src'];
@@ -89,7 +91,9 @@ class SuperflixService {
               '/lista?category=${events ? 'eventos' : 'canais'}&format=json&limit=500'))
           as Map;
       if (raw['success'] != true)
-        throw StateError('A fonte não retornou a lista.');
+        {
+throw StateError('A fonte não retornou a lista.');
+}
       return ((raw['data'] as List?) ?? [])
           .whereType<Map>()
           .map((v) => Map<String, dynamic>.from(v))
