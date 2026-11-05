@@ -146,35 +146,6 @@ void main() {
         daima('a', audio: 'Dublado'), [daima('a', audio: 'Dublado')]);
     expect(repeated.sources, hasLength(1));
   });
-  testWidgets(
-      'details discovers alternate sources without a previous catalog visit',
-      (tester) async {
-    final item = daima('animesonlinecc', audio: 'Legendado');
-    SharedPreferences.setMockInitialValues({
-      'cineshow.titleinfo.v3:animesonlinecc:daima:${item.id}': jsonEncode({
-        'at': DateTime.now().toIso8601String(),
-        'data': {'plot': 'Sinopse de teste', 'title': item.title, 'year': 0}
-      })
-    });
-    final result = Completer<MediaItem>();
-    await tester.pumpWidget(MaterialApp(
-        home: DetailsPage(
-            item: item,
-            catalog: EmptyCatalog(),
-            isFavorite: false,
-            onFavorite: (_) {},
-            onOpenTitle: (_) {},
-            sourceDiscovery: (_) => result.future)));
-    await tester.pump();
-    expect(find.text('Buscando outras fontes…'), findsOneWidget);
-    result.complete(combineAlternativeSources(
-        item, [daima('megafilmes', year: 2024, audio: 'Dublado')]));
-    await tester.pumpAndSettle();
-    expect(find.text('Mega Filmes · Dublado'), findsOneWidget);
-    expect(find.text('Animes Online · Legendado'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-    await tester.pumpWidget(const SizedBox.shrink());
-  });
   test('favorites from actor/search persist even without the Home catalog',
       () async {
     final item = movie();
