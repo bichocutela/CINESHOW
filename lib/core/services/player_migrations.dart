@@ -12,3 +12,15 @@ String canonicalPlayerUrl(String value) {
       .replace(scheme: 'https', host: 'redeflixapi.bar', port: 443)
       .toString();
 }
+
+class PlayerMigrationTracker {
+  final targets = <String>{};
+
+  String? targetFor(String url) {
+    final target = canonicalPlayerUrl(url);
+    if (target == url || !targets.add(target)) {
+      return null;
+    }
+    return target;
+  }
+}

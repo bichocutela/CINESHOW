@@ -170,6 +170,10 @@ void main() {
     expect(canonicalPlayerUrl('https://redeflixapi.store.evil.test/filme/1'),
         'https://redeflixapi.store.evil.test/filme/1');
     expect(providerEmbedHtml(old), contains('redeflixapi.bar'));
+    final tracker = PlayerMigrationTracker();
+    expect(tracker.targetFor(old), current);
+    expect(tracker.targetFor(old), isNull);
+    expect(tracker.targetFor('https://ad.example/'), isNull);
     final resolver = ProviderPlaybackResolver(
         client: MockClient((_) async =>
             throw StateError('Must not request discontinued domain')));

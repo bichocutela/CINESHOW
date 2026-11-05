@@ -26,7 +26,8 @@ class SourcePage extends StatefulWidget {
 }
 
 class _SourcePageState extends State<SourcePage> {
-  String get playerUrl => canonicalPlayerUrl(widget.url);
+  late String playerUrl = canonicalPlayerUrl(widget.url);
+  final migrations = PlayerMigrationTracker();
   late final WebViewController controller;
   late final navigation = SourceNavigationPolicy(widget.embedded
       ? providerEmbedBase(playerUrl, widget.headers)
@@ -63,6 +64,18 @@ class _SourcePageState extends State<SourcePage> {
             }
           },
           onNavigationRequest: (r) {
+            if (canonicalPlayerUrl(r.url) != r.url) {
+              final target = migrations.targetFor(r.url);
+              if (target != null) {
+                playerUrl = target;
+                unawaited(Future<void>(() async {
+                  if (mounted) {
+                    await _retry();
+                  }
+                }));
+              }
+              return NavigationDecision.prevent;
+            }
             return navigation.allows(r.url, isMainFrame: r.isMainFrame)
                 ? NavigationDecision.navigate
                 : NavigationDecision.prevent;
