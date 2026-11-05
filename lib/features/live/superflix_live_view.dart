@@ -29,13 +29,12 @@ class _SuperflixLiveViewState extends State<SuperflixLiveView> {
       final cached = ((jsonDecode(prefs.getString(key) ?? '[]')) as List)
           .map((v) => Map<String, dynamic>.from(v as Map))
           .toList();
-      if (mounted)
-        {
-setState(() {
+      if (mounted) {
+        setState(() {
           items = cached;
           loading = cached.isEmpty;
         });
-}
+      }
     } catch (_) {}
     await _refresh();
   }
@@ -52,19 +51,17 @@ setState(() {
       await prefs.setString(key, jsonEncode(rows));
       if (mounted) setState(() => items = rows);
     } catch (_) {
-      if (mounted)
-        {
-setState(() => error =
+      if (mounted) {
+        setState(() => error =
             'Não foi possível atualizar esta fonte. Os dados salvos continuam disponíveis.');
-}
+      }
     } finally {
-      if (mounted)
-        {
-setState(() {
+      if (mounted) {
+        setState(() {
           loading = false;
           refreshing = false;
         });
-}
+      }
     }
   }
 
@@ -74,8 +71,8 @@ setState(() {
     if (uri == null ||
         uri.origin != superflixOrigin ||
         !RegExp(r'^/(?:canal|eventos)/').hasMatch(uri.path)) {
-return;
-}
+      return;
+    }
     Navigator.push(
         context,
         MaterialPageRoute<void>(

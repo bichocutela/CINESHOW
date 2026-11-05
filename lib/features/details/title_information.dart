@@ -31,8 +31,8 @@ class _TitleInformationState extends State<TitleInformation> {
     if (oldWidget.item.id != widget.item.id ||
         oldWidget.source?.provider != widget.source?.provider ||
         oldWidget.source?.sourceId != widget.source?.sourceId) {
-_load();
-}
+      _load();
+    }
   }
 
   void _load({bool force = false}) {
@@ -46,11 +46,10 @@ _load();
         throw StateError('Não foi possível abrir.');
       }
     } catch (_) {
-      if (mounted)
-        {
-ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('Não foi possível abrir a consulta.')));
-}
+      }
     }
   }
 

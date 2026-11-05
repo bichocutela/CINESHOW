@@ -11,12 +11,11 @@ class EpisodePagination extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pages = (total / 100).ceil();
-    if (pages <= 1)
-      {
-return Padding(
+    if (pages <= 1) {
+      return Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Text('$total episódios disponíveis'));
-}
+    }
     final current = page.clamp(0, pages - 1).toInt();
     return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),

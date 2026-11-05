@@ -5,10 +5,9 @@ String chapterUrl(Map<String, dynamic> chapter) =>
 
 String chapterIdentity(String url) {
   final uri = Uri.parse(url);
-  if (uri.queryParameters['date'] != null)
-    {
-return uri.queryParameters['date']!.split('_').first;
-}
+  if (uri.queryParameters['date'] != null) {
+    return uri.queryParameters['date']!.split('_').first;
+  }
   if (uri.queryParameters['season'] != null &&
       uri.queryParameters['episode'] != null) {
     return '${uri.path}:${uri.queryParameters['id'] ?? uri.queryParameters['tmdb']}:${uri.queryParameters['season']}x${uri.queryParameters['episode']}';
@@ -30,10 +29,9 @@ List<Map<String, dynamic>> orderedChapters(
     }
   }
   (int, int, String) order(Map<String, dynamic> value) {
-    if (value['number'] is int)
-      {
-return (value['season'] as int? ?? 1, value['number'] as int, '');
-}
+    if (value['number'] is int) {
+      return (value['season'] as int? ?? 1, value['number'] as int, '');
+    }
     final uri = Uri.parse(chapterUrl(value));
     final numbers = RegExp(r'-(\d+)x(\d+)/?$').firstMatch(uri.path);
     if (numbers != null) {

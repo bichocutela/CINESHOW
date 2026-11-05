@@ -253,10 +253,9 @@ class ProviderPlaybackResolver {
   Future<List<ProviderPlaybackOption>> expand(
       ProviderPlaybackOption option) async {
     final uri = Uri.parse(option.url);
-    if (uri.host == 'www.blogger.com' || uri.host == 'blogger.com')
-      {
-return _blogger(option);
-}
+    if (uri.host == 'www.blogger.com' || uri.host == 'blogger.com') {
+      return _blogger(option);
+    }
     if (uri.host != 'embed.embedplayer.site') return [option];
     try {
       final html = await _text(uri, referer: option.headers['Referer']);
@@ -324,15 +323,15 @@ return _blogger(option);
     var index = 0;
     for (final tag in RegExp(r'<iframe\b[^>]*>').allMatches(html)) {
       final a = attributes(tag[0]!);
-      if (!(a['class'] ?? '').contains('metaframe') || a['src'] == null)
-        {
-continue;
-}
+      if (!(a['class'] ?? '').contains('metaframe') || a['src'] == null) {
+        continue;
+      }
       final uri = Uri.parse(animeOrigin).resolve(a['src']!);
-      if (uri.scheme != 'https' || uri.host.isEmpty || uri.userInfo.isNotEmpty)
-        {
-continue;
-}
+      if (uri.scheme != 'https' ||
+          uri.host.isEmpty ||
+          uri.userInfo.isNotEmpty) {
+        continue;
+      }
       index++;
       options.add(ProviderPlaybackOption(
           url: uri.toString(),
@@ -341,10 +340,9 @@ continue;
           id: 'animesonlinecc:$episode:$index',
           headers: {'Referer': '$animeOrigin/'}));
     }
-    if (options.isEmpty)
-      {
-throw StateError('Nenhum player publicado para este episódio.');
-}
+    if (options.isEmpty) {
+      throw StateError('Nenhum player publicado para este episódio.');
+    }
     return options;
   }
 
@@ -365,8 +363,8 @@ throw StateError('Nenhum player publicado para este episódio.');
             uri.scheme != 'https' ||
             !uri.host.endsWith('.googlevideo.com') ||
             uri.userInfo.isNotEmpty) {
-continue;
-}
+          continue;
+        }
         final headers = {
           'Referer': 'https://www.blogger.com/',
           'User-Agent': 'CINESHOW/0.6.0'
@@ -404,20 +402,18 @@ continue;
       }
       if (frame == null) throw StateError('A fonte não publicou o player.');
       player = Uri.parse(_origin).resolve(frame);
-      if (player.origin != _origin || player.path != '/player.php')
-        {
-throw StateError('Player inválido.');
-}
+      if (player.origin != _origin || player.path != '/player.php') {
+        throw StateError('Player inválido.');
+      }
       html = await _get('${player.path}?${player.query}');
     }
     final path =
         RegExp(r'const\s+apiUrl\s*=\s*(".*?")\s*;').firstMatch(html)?[1];
     if (path == null) throw StateError('A rota de reprodução mudou.');
     final uri = _url(jsonDecode(path) as String);
-    if (uri.path != '/generate_token.php')
-      {
-throw StateError('Rota de reprodução inválida.');
-}
+    if (uri.path != '/generate_token.php') {
+      throw StateError('Rota de reprodução inválida.');
+    }
     final request = uri.replace(queryParameters: {
       ...uri.queryParameters,
       '_': '${DateTime.now().millisecondsSinceEpoch}'

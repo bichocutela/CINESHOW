@@ -276,24 +276,21 @@ class LiveCatalog {
           paths['$provider:category'] = '/melhores/$slug/';
         }
       } else {
-        if (kind != 'series')
-          {
-paths['$provider:movie'] =
+        if (kind != 'series') {
+          paths['$provider:movie'] =
               provider == 'megafilmes' || provider == 'superflix'
                   ? '/filmes'
                   : '/filme/';
-}
-        if (kind != 'movie')
-          {
-paths['$provider:series'] =
+        }
+        if (kind != 'movie') {
+          paths['$provider:series'] =
               provider == 'megafilmes' || provider == 'superflix'
                   ? '/series'
                   : '/serie/';
-}
-        if (kind != 'movie' && provider == 'superflix')
-          {
-paths['superflix:dorama'] = '/doramas';
-}
+        }
+        if (kind != 'movie' && provider == 'superflix') {
+          paths['superflix:dorama'] = '/doramas';
+        }
       }
     }
     final errors = <String>[];

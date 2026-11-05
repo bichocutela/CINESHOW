@@ -10,10 +10,9 @@ List<MediaItem> parseMegaCards(String html) {
       in RegExp(r'<article\b.*?</article>', dotAll: true).allMatches(html)) {
     final value = block[0]!;
     final className = attributes(value.split('>').first)['class'] ?? '';
-    if (!className.contains('anx-card') && !className.contains('browse-card'))
-      {
-continue;
-}
+    if (!className.contains('anx-card') && !className.contains('browse-card')) {
+      continue;
+    }
     final a = RegExp(r'<a\b[^>]*>').firstMatch(value);
     final attr = attributes(a?[0] ?? '');
     final raw = attr['href'];

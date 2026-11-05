@@ -708,11 +708,10 @@ class _DetailsState extends State<DetailsPage> {
     if (!mounted) return;
     if (widget.item.kind != 'movie' && url == source.pageUrl) {
       final ordered = orderedChapters(episodes);
-      if (ordered.isNotEmpty)
-        {
-url = chapterUrl(
+      if (ordered.isNotEmpty) {
+        url = chapterUrl(
             widget.item.kind == 'anime' ? ordered.first : ordered.last);
-}
+      }
     }
     final resolver = ProviderPlaybackResolver();
     activeResolver = resolver;

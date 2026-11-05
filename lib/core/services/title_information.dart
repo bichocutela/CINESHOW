@@ -38,8 +38,8 @@ String sourceSynopsis(String html) {
         RegExp(r'^(Onde|Assistir|Que ano|Foi lançado|Confira)\b',
                 caseSensitive: false)
             .hasMatch(text)) {
-continue;
-}
+      continue;
+    }
     paragraphs.add(text);
     if (paragraphs.length == 3) break;
   }
@@ -148,10 +148,9 @@ class TitleInformationService {
       if (source != null) {
         try {
           final uri = Uri.parse(canonicalSourceUrl(source.pageUrl));
-          if (uri.origin != origins[source.provider])
-            {
-throw StateError('Fonte inválida.');
-}
+          if (uri.origin != origins[source.provider]) {
+            throw StateError('Fonte inválida.');
+          }
           final html = await read(uri);
           final plot = sourceSynopsis(html);
           if (plot.isNotEmpty) {
@@ -208,10 +207,9 @@ throw StateError('Fonte inválida.');
                 'runtime',
                 'genres'
               ]) {
-                if (data[field] != null && data[field] != '')
-                  {
-result[field] = data[field];
-}
+                if (data[field] != null && data[field] != '') {
+                  result[field] = data[field];
+                }
               }
               if ((data['plot'] as String? ?? '').isNotEmpty) {
                 result['plot'] = data['plot'];
