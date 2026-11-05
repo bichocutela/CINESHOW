@@ -6,7 +6,8 @@ import '../../core/services/poster_sources.dart';
 
 class AnimeCategoryView extends StatefulWidget {
   const AnimeCategoryView(
-      {super.key, required this.onOpen, this.active = true});
+      {super.key, required this.onOpen, this.active = true, this.serviceFactory});
+  final AnimeCatalogService Function(String provider)? serviceFactory;
   final Future<void> Function(MediaItem item, String? episode) onOpen;
   final bool active;
   @override
@@ -16,7 +17,8 @@ class AnimeCategoryView extends StatefulWidget {
 class _AnimeCategoryViewState extends State<AnimeCategoryView>
     with WidgetsBindingObserver {
   String provider = 'animesonlinecc';
-  AnimeCatalogService get service => AnimeCatalogService(provider: provider);
+  AnimeCatalogService get service => widget.serviceFactory?.call(provider) ?? AnimeCatalogService(provider: provider);
+  final searchController = TextEditingController();
   List<MediaItem> recent = [], episodes = [], items = [];
   List<Map<String, dynamic>> notices = [];
   String mode = 'Recentes', query = '';
@@ -31,13 +33,15 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
     WidgetsBinding.instance.addObserver(this);
     _initial();
     timer = Timer.periodic(const Duration(minutes: 5), (_) {
-      if (foreground && widget.active) _refresh();
+      if (foreground && widget.active && mode == 'Recentes') _refresh();
     });
   }
 
   Future<void> _initial() async {
-    final cache = await service.cached();
-    if (!mounted) return;
+    final request = ++generation;
+    final selectedService = service;
+    final cache = await selectedService.cached();
+    if (!mounted || request != generation) return;
     setState(() {
       recent = cache['titles']!;
       episodes = cache['episodes']!;
@@ -46,32 +50,49 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
   }
 
   Future<void> _refresh() async {
-    if (loading) return;
-    setState(() {
-      loading = true;
-      error = null;
-    });
+    if (loading || !mounted) return;
+    final request = ++generation;
+    final selectedService = service;
+    setState(() { loading = true; error = null; });
     try {
-      final data = await service.refresh();
-      final rows = await service.notices();
-      if (mounted) {
-        setState(() {
-          recent = data['titles']!;
-          episodes = data['episodes']!;
-          notices = rows;
-        });
+      final data = await selectedService.refresh();
+      final rows = await selectedService.notices();
+      if (mounted && request == generation) {
+        setState(() { recent = data['titles']!; episodes = data['episodes']!; notices = rows; });
       }
     } catch (_) {
-      if (mounted) {
-        setState(
-            () => error = 'A fonte não respondeu. Exibindo os dados salvos.');
-      }
+      if (mounted && request == generation) setState(() => error = 'A fonte não respondeu. Exibindo os dados salvos.');
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted && request == generation) setState(() => loading = false);
     }
   }
 
+  Future<void> _mode(String value) async {
+    debounce?.cancel();
+    final request = ++generation;
+    setState(() { mode = value; loading = false; });
+    if (value == 'A–Z') { await _list(reset: true); }
+    else if (value == 'Recentes') { await _refresh(); }
+    else if (value == 'Novidades') {
+      try {
+        final rows = await service.notices(markRead: true);
+        if (mounted && request == generation) setState(() => notices = rows);
+      } catch (_) {
+        if (mounted && request == generation) setState(() => error = 'Não foi possível carregar as novidades agora.');
+      }
+    }
+  }
+
+  void _letter(String? value) {
+    debounce?.cancel();
+    searchController.clear();
+    letter = value;
+    query = '';
+    _list(reset: true);
+  }
+
   Future<void> _list({bool reset = false}) async {
+    if (!mounted) return;
     final request = ++generation;
     final next = reset ? 1 : page + 1;
     setState(() {
@@ -113,6 +134,7 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
   void _query(String value) {
     debounce?.cancel();
     query = value.trim();
+    setState(() => loading = false);
     generation++;
     debounce =
         Timer(const Duration(milliseconds: 400), () => _list(reset: true));
@@ -137,13 +159,15 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     foreground = state == AppLifecycleState.resumed;
-    if (foreground && widget.active) _refresh();
+    if (foreground && widget.active && mode == 'Recentes') _refresh();
   }
 
   @override
   void dispose() {
+    generation++;
     timer?.cancel();
     debounce?.cancel();
+    searchController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -184,6 +208,7 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
                         debounce?.cancel();
                         generation++;
                         setState(() {
+                          searchController.clear();
                           provider = entry.key;
                           mode = 'Recentes';
                           query = '';
@@ -200,6 +225,7 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
         Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: TextField(
+                controller: searchController,
                 onChanged: _query,
                 decoration: const InputDecoration(
                     hintText: 'Buscar anime',
@@ -217,21 +243,10 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
                             ? 'Novidades (${notices.where((n) => n['read'] != true).length})'
                             : value),
                         selected: mode == value,
-                        onSelected: (_) async {
-                          generation++;
-                          setState(() {
-                            mode = value;
-                            loading = false;
-                          });
-                          if (value == 'A–Z') await _list(reset: true);
-                          if (value == 'Novidades') {
-                            final rows = await service.notices(markRead: true);
-                            if (mounted) setState(() => notices = rows);
-                          }
-                        })),
+                        onSelected: (_) => _mode(value))),
               IconButton(
                   tooltip: 'Atualizar animes',
-                  onPressed: loading ? null : _refresh,
+                  onPressed: loading ? null : () => mode == 'A–Z' ? _list(reset: true) : _refresh(),
                   icon: const Icon(Icons.refresh))
             ])),
         if (mode == 'A–Z')
@@ -242,21 +257,14 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
                 ChoiceChip(
                     label: const Text('Todas'),
                     selected: letter == null,
-                    onSelected: (_) {
-                      letter = null;
-                      _list(reset: true);
-                    }),
+                    onSelected: (_) => _letter(null)),
                 for (var code = 65; code <= 90; code++)
                   Padding(
                       padding: const EdgeInsets.only(left: 6),
                       child: ChoiceChip(
                           label: Text(String.fromCharCode(code)),
                           selected: letter == String.fromCharCode(code),
-                          onSelected: (_) {
-                            letter = String.fromCharCode(code);
-                            query = '';
-                            _list(reset: true);
-                          }))
+                          onSelected: (_) => _letter(String.fromCharCode(code))))
               ])),
         if (loading || opening) const LinearProgressIndicator(),
         if (error != null)

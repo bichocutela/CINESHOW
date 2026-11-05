@@ -125,14 +125,16 @@ jobs:
           generate_release_notes: true
           body: |
             Atualização oficial com a mesma assinatura permanente.
-            - Filmes e séries do ator pesquisados nas fontes ao clicar, sem depender de fichas visitadas.
-            - Busca por elenco com páginas, atualização e tentativa das fontes pendentes.
-            - Ignora recomendações laterais que não pertencem ao elenco selecionado.
-            - Preserva os IDs IMDb publicados no catálogo SuperFlix e atualiza entradas antigas do cache.
-            - Usa título original e busca de identidade confirmada por nome, ano e tipo nas informações.
-            - Informações indisponíveis são consultadas novamente em prazo menor.
-            Mantém TV Aberta, novelas, listas de reserva, avaliações separadas e correção de domínio dos players.
-            A cobertura depende dos créditos e catálogos publicados pelas fontes. Sem teste físico Android.
+            - Detalhes buscam outras fontes do mesmo título, inclusive Anime no Mega Filmes; opções preservam áudio e qualidade informados por fonte.
+            - Minha lista independente da página inicial: salva filmes da busca, atores e animes.
+            - Preserva os identificadores dos títulos ao recarregar os dados.
+            - Corrige leitura de ano quando o card começa pela qualidade Dublado/Legendado.
+            - Evita duplicar um título quando o ano antes desconhecido é preenchido pela mesma fonte.
+            - Preserva links diretos e cabeçalhos ao mesclar o catálogo.
+            - Continuar assistindo lembra o player/áudio escolhido e tolera registros inválidos.
+            - Impede respostas antigas e pesquisas pendentes de mudarem a aba de Anime.
+            - Avisos simultâneos não se sobrescrevem; falhas de exclusão de downloads são tratadas.
+            Mantém as fontes existentes, atores online, informações e verificação de assinatura da atualização.
             Abra Sobre e verifique a atualização para baixar pelo próprio CINESHOW.
     permissions:
       contents: write

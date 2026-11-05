@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'core/models/media_item.dart';
 import 'core/services/poster_sources.dart';
@@ -21,6 +20,8 @@ import 'features/player/presentation/player_page.dart';
 import 'features/player/presentation/source_page.dart';
 import 'core/services/live_catalog.dart';
 import 'core/services/app_updates.dart';
+import 'core/services/favorites.dart';
+import 'core/services/alternative_sources.dart';
 import 'features/details/title_information.dart';
 import 'features/anime/anime_category_view.dart';
 import 'core/services/anime_catalog.dart';
@@ -45,17 +46,19 @@ class CineShowApp extends StatelessWidget {
 }
 
 class ShellPage extends StatefulWidget {
-  const ShellPage({super.key});
+  const ShellPage({super.key, this.catalog});
+  final LiveCatalog? catalog;
   @override
   State<ShellPage> createState() => _ShellState();
 }
 
 class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
-  final catalog = LiveCatalog();
+  late final catalog = widget.catalog ?? LiveCatalog();
+  final favoriteStore = Favorites();
+  FavoriteState favoriteState = const FavoriteState({}, []);
   List<ContinueEntry> recent = [];
   List<MediaItem> items = [];
   List<MediaItem> arrivals = [];
-  Set<String> favorites = {};
   List<String> errors = [];
   bool loading = true;
   int tab = 0;
@@ -80,11 +83,11 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
   }
 
   Future<void> _load() async {
-    final p = await SharedPreferences.getInstance();
     final cached = await catalog.cached();
+    final savedFavorites = await favoriteStore.load(known: cached);
     if (!mounted) return;
     setState(() {
-      favorites = (p.getStringList('favorites') ?? []).toSet();
+      favoriteState = savedFavorites;
       items = cached;
       loading = cached.isEmpty;
     });
@@ -96,14 +99,16 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
   Future<void> _refresh() async {
     try {
       final r = await catalog.refresh();
-      final sorted = await CatalogArrivals()
-          .recordAndSort(catalog.mergeItems([...items, ...r.items]));
+      final merged = catalog.mergeItems([...items, ...r.items]);
+      final sorted = await CatalogArrivals().recordAndSort(merged);
+      final savedFavorites = await favoriteStore.load(known: merged);
       if (!mounted) return;
       setState(() {
         if (r.items.isNotEmpty) {
           items = catalog.mergeItems([...items, ...r.items]);
         }
-        arrivals = sorted;
+        favoriteState = savedFavorites;
+          arrivals = sorted;
         errors = r.errors;
         loading = false;
       });
@@ -219,13 +224,12 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
   }
 
   Future<void> _favorite(MediaItem item) async {
-    setState(() {
-      favorites.contains(item.id)
-          ? favorites.remove(item.id)
-          : favorites.add(item.id);
-    });
-    final p = await SharedPreferences.getInstance();
-    await p.setStringList('favorites', favorites.toList());
+    try {
+      final next = await favoriteStore.toggle(item);
+      if (mounted) setState(() { favoriteState = next; });
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Não foi possível salvar a minha lista. Tente novamente.')));
+    }
   }
 
   Future<void> _recent() async {
@@ -241,11 +245,12 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
             builder: (_) => DetailsPage(
                 item: item,
                 catalog: catalog,
-                isFavorite: favorites.contains(item.id),
-                onFavorite: () => _favorite(item),
+                isFavorite: favoriteState.contains(item),
+                onFavorite: _favorite,
                 onOpenTitle: _details,
                 resumeSource: resume?.source,
-                resumePage: resume?.pageUrl ?? initialEpisode)));
+                resumePage: resume?.pageUrl ?? initialEpisode,
+                resumePlayer: resume?.playerLabel)));
     await _recent();
   }
 
@@ -452,12 +457,12 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
           ListView(padding: const EdgeInsets.all(16), children: [
             const Text('Minha lista',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-            if (!items.any((i) => favorites.contains(i.id)))
+            if (favoriteState.items.isEmpty)
               const Padding(
                   padding: EdgeInsets.only(top: 24),
                   child: Text(
                       'Adicione títulos à sua lista na tela de detalhes.')),
-            for (final i in items.where((i) => favorites.contains(i.id)))
+            for (final i in favoriteState.items)
               ListTile(
                   title: Text(i.title),
                   subtitle: Text(i.typeLabel),
@@ -613,22 +618,25 @@ class DetailsPage extends StatefulWidget {
       required this.onFavorite,
       required this.onOpenTitle,
       this.resumeSource,
-      this.resumePage});
+      this.resumePage, this.resumePlayer, this.sourceDiscovery});
   final MediaItem item;
   final LiveCatalog catalog;
   final bool isFavorite;
-  final VoidCallback onFavorite;
+  final ValueChanged<MediaItem> onFavorite;
   final ValueChanged<MediaItem> onOpenTitle;
   final MediaSource? resumeSource;
-  final String? resumePage;
+  final String? resumePage, resumePlayer;
+  final Future<MediaItem> Function(MediaItem)? sourceDiscovery;
   @override
   State<DetailsPage> createState() => _DetailsState();
 }
 
 class _DetailsState extends State<DetailsPage> {
+  late MediaItem item = widget.item;
+  bool discoveringSources = false;
   late bool favorite = widget.isFavorite;
   late MediaSource? selected =
-      widget.resumeSource ?? widget.item.sources.firstOrNull;
+      widget.resumeSource ?? item.sources.firstOrNull;
   List<Map<String, dynamic>> episodes = [];
   int episodePage = 0;
   List<Map<String, dynamic>> get visibleEpisodes =>
@@ -643,14 +651,32 @@ class _DetailsState extends State<DetailsPage> {
   @override
   void initState() {
     super.initState();
-    CatalogNotices.instance.isFollowing(widget.item.id).then((value) {
+    _discoverSources();
+    CatalogNotices.instance.isFollowing(item.id).then((value) {
       if (mounted) setState(() => following = value);
     });
-    if (widget.item.kind != 'movie' && selected != null) _episodes();
+    if (item.kind != 'movie' && selected != null) _episodes();
     if (widget.resumePage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _watchSource(widget.resumePage!);
+        if (mounted) _watchSource(widget.resumePage!, auto: true, preferredPlayer: widget.resumePlayer);
       });
+    }
+  }
+
+  Future<void> _discoverSources() async {
+    if (discoveringSources) return;
+    setState(() => discoveringSources = true);
+    try {
+      final enriched = await (widget.sourceDiscovery ?? SourceDiscovery(widget.catalog).discover)(item);
+      if (!mounted) return;
+      setState(() {
+        item = enriched;
+        selected = enriched.sources.where((s) => sameSource(s, selected)).firstOrNull ?? selected ?? enriched.sources.firstOrNull;
+      });
+    } catch (_) {
+      // Existing sources remain usable when discovery is unavailable.
+    } finally {
+      if (mounted) setState(() => discoveringSources = false);
     }
   }
 
@@ -664,11 +690,11 @@ class _DetailsState extends State<DetailsPage> {
       episodes = [];
       episodePage = 0;
     });
+    final source = selected!;
     try {
-      final source = selected!;
       final e = await widget.catalog.episodes(source);
-      await CatalogNotices.instance.syncChapters(widget.item, source, e);
-      if (mounted) setState(() => episodes = e);
+      await CatalogNotices.instance.syncChapters(item, source, e);
+      if (mounted && sameSource(source, selected)) setState(() => episodes = e);
     } catch (_) {
       if (mounted) {
         setState(() => error =
@@ -704,13 +730,13 @@ class _DetailsState extends State<DetailsPage> {
       String? preferredPlayer}) async {
     final source = selected;
     if (resolving || source == null) return;
-    if (widget.item.kind != 'movie' && episodes.isEmpty) await _episodes();
-    if (!mounted) return;
-    if (widget.item.kind != 'movie' && url == source.pageUrl) {
+    if (item.kind != 'movie' && episodes.isEmpty) await _episodes();
+    if (!mounted || !sameSource(source, selected) || resolving) return;
+    if (item.kind != 'movie' && url == source.pageUrl) {
       final ordered = orderedChapters(episodes);
       if (ordered.isNotEmpty) {
         url = chapterUrl(
-            widget.item.kind == 'anime' ? ordered.first : ordered.last);
+            item.kind == 'anime' ? ordered.first : ordered.last);
       }
     }
     final resolver = ProviderPlaybackResolver();
@@ -721,7 +747,7 @@ class _DetailsState extends State<DetailsPage> {
     });
     try {
       final options = await resolver
-          .resolve(widget.item, source, pageUrl: url)
+          .resolve(item, source, pageUrl: url)
           .timeout(const Duration(seconds: 90));
       if (!mounted) return;
       ProviderPlaybackOption? choice;
@@ -755,7 +781,7 @@ class _DetailsState extends State<DetailsPage> {
           throw StateError(
               'Esta fonte fornece apenas um player externo e não disponibiliza arquivo para download.');
         }
-        await downloadMedia(context, playable.media(widget.item));
+        await downloadMedia(context, playable.media(item));
         return;
       }
       final next = nextChapter(episodes, url);
@@ -764,10 +790,10 @@ class _DetailsState extends State<DetailsPage> {
           replaceCurrent: true,
           startFullscreen: fullscreen,
           preferredPlayer: playable.label);
-      final media = playable.media(widget.item);
+      final media = playable.media(item);
       if (playable.direct) {
         try {
-          await ContinueWatching().save(widget.item, source, url, media.id);
+          await ContinueWatching().save(item, source, url, media.id, playerLabel: playable.label);
         } catch (_) {
           // A history storage failure must not stop playback.
         }
@@ -784,7 +810,7 @@ class _DetailsState extends State<DetailsPage> {
                   initialFullscreen: startFullscreen,
                   onNext: next == null ? null : advance)
               : SourcePage(
-                  title: widget.item.title,
+                  title: item.title,
                   url: playable.url,
                   headers: playable.headers,
                   embedded: true,
@@ -815,9 +841,9 @@ class _DetailsState extends State<DetailsPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: Text(widget.item.title), actions: [
-        if (widget.item.kind != 'movie' &&
-            widget.item.kind != 'anime' &&
+      appBar: AppBar(title: Text(item.title), actions: [
+        if (item.kind != 'movie' &&
+            item.kind != 'anime' &&
             selected != null)
           IconButton(
               tooltip: following
@@ -829,7 +855,7 @@ class _DetailsState extends State<DetailsPage> {
               onPressed: () async {
                 try {
                   final value = await CatalogNotices.instance
-                      .toggle(widget.item, selected!, episodes);
+                      .toggle(item, selected!, episodes);
                   if (mounted) setState(() => following = value);
                 } catch (_) {
                   if (context.mounted) {
@@ -849,40 +875,46 @@ class _DetailsState extends State<DetailsPage> {
                     height: 260,
                     child: Center(
                         child: SizedBox(
-                            width: 180, child: Cover(item: widget.item)))),
+                            width: 180, child: Cover(item: item)))),
                 const SizedBox(height: 20),
-                Text(widget.item.title,
+                Text(item.title,
                     style: const TextStyle(
                         fontSize: 28, fontWeight: FontWeight.w800)),
                 Text(
-                    '${widget.item.typeLabel}${widget.item.year > 0 ? ' · ${widget.item.year}' : ''}',
+                    '${item.typeLabel}${item.year > 0 ? ' · ${item.year}' : ''}',
                     style: const TextStyle(color: Colors.white60)),
                 const SizedBox(height: 16),
-                Wrap(spacing: 8, children: [
-                  for (final s in widget.item.sources)
+                Row(children: [
+                  const Expanded(child: Text('Onde assistir', style: TextStyle(fontWeight: FontWeight.w700))),
+                  if (discoveringSources) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  else IconButton(tooltip: 'Buscar outras fontes', onPressed: _discoverSources, icon: const Icon(Icons.refresh))
+                ]),
+                if (discoveringSources) const Text('Buscando outras fontes…', style: TextStyle(color: Colors.white60)),
+                Wrap(spacing: 8, runSpacing: 4, children: [
+                  for (final s in item.sources)
                     ChoiceChip(
-                        label: Text(s.label),
-                        selected: s == selected,
+                        label: Text(s.optionLabel),
+                        selected: sameSource(s, selected),
                         onSelected: loading || resolving
                             ? null
                             : (_) {
                                 setState(() => selected = s);
-                                if (widget.item.kind != 'movie' &&
+                                if (item.kind != 'movie' &&
                                     selected != null) {
                                   _episodes();
                                 }
                               })
                 ]),
                 const SizedBox(height: 12),
-                if (widget.item.streamUrl?.isNotEmpty == true)
+                if (item.streamUrl?.isNotEmpty == true)
                   FilledButton.icon(
                       onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute<void>(
-                              builder: (_) => PlayerPage(media: widget.item))),
+                              builder: (_) => PlayerPage(media: item))),
                       icon: const Icon(Icons.play_arrow),
                       label: const Text('Assistir no CINESHOW')),
-                if (widget.item.streamUrl?.isNotEmpty != true &&
+                if (item.streamUrl?.isNotEmpty != true &&
                     selected != null)
                   FilledButton.icon(
                       onPressed: resolving
@@ -893,19 +925,19 @@ class _DetailsState extends State<DetailsPage> {
                           ? 'Localizando vídeo...'
                           : 'Assistir no app')),
                 if (selected != null &&
-                    widget.item.streamUrl?.isNotEmpty != true)
+                    item.streamUrl?.isNotEmpty != true)
                   OutlinedButton.icon(
                       onPressed: resolving
                           ? null
                           : () =>
                               _watchSource(selected!.pageUrl, download: true),
                       icon: const Icon(Icons.download_outlined),
-                      label: Text(widget.item.kind == 'movie'
+                      label: Text(item.kind == 'movie'
                           ? 'Baixar filme'
                           : 'Baixar capítulo')),
-                if (widget.item.streamUrl?.isNotEmpty == true)
+                if (item.streamUrl?.isNotEmpty == true)
                   OutlinedButton.icon(
-                      onPressed: () => downloadMedia(context, widget.item),
+                      onPressed: () => downloadMedia(context, item),
                       icon: const Icon(Icons.download_outlined),
                       label: const Text('Baixar vídeo')),
                 if (resolving) const LinearProgressIndicator(),
@@ -920,7 +952,7 @@ class _DetailsState extends State<DetailsPage> {
                       label: const Text('Abrir na fonte')),
                 OutlinedButton.icon(
                     onPressed: () {
-                      widget.onFavorite();
+                      widget.onFavorite(item);
                       setState(() => favorite = !favorite);
                     },
                     icon:
@@ -929,10 +961,10 @@ class _DetailsState extends State<DetailsPage> {
                         ? 'Na minha lista'
                         : 'Adicionar à minha lista')),
                 TitleInformation(
-                    item: widget.item,
+                    item: item,
                     source: selected,
                     onOpenTitle: widget.onOpenTitle),
-                if (widget.item.kind != 'movie' && selected != null) ...[
+                if (item.kind != 'movie' && selected != null) ...[
                   const SizedBox(height: 20),
                   Row(children: [
                     const Expanded(

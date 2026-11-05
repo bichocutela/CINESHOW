@@ -9,11 +9,13 @@ Future<void> downloadMedia(BuildContext context, MediaItem item) async {
       const SnackBar(content: Text('Verificando o arquivo para download...')));
   try {
     await MediaDownloads.instance.start(item);
+    if (!messenger.mounted) return;
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(const SnackBar(
         content: Text(
             'Download enviado ao Android. Acompanhe em Sobre → Meus downloads.')));
   } catch (error) {
+    if (!messenger.mounted) return;
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(SnackBar(
         content: Text(error is StateError
@@ -45,7 +47,7 @@ class _DownloadsPageState extends State<DownloadsPage>
   }
 
   Future<void> _load() async {
-    if (polling) return;
+    if (polling || !mounted) return;
     polling = true;
     try {
       final next = await MediaDownloads.instance.list();
@@ -91,9 +93,13 @@ class _DownloadsPageState extends State<DownloadsPage>
                       onPressed: () => Navigator.pop(context, true),
                       child: const Text('Excluir'))
                 ]));
-    if (confirmed != true) return;
-    await MediaDownloads.instance.remove(id);
-    await _load();
+    if (confirmed != true || !mounted) return;
+    try {
+      await MediaDownloads.instance.remove(id);
+      if (mounted) await _load();
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Não foi possível excluir o download. Tente novamente.')));
+    }
   }
 
   @override
@@ -127,8 +133,8 @@ class _DownloadsPageState extends State<DownloadsPage>
                             if (item['state'] == 'downloading' ||
                                 item['state'] == 'paused')
                               LinearProgressIndicator(
-                                  value: (item['total'] as num) > 0
-                                      ? ((item['bytes'] as num) /
+                                  value: (item['total'] as num? ?? 0) > 0
+                                      ? ((item['bytes'] as num? ?? 0) /
                                               (item['total'] as num))
                                           .clamp(0.0, 1.0)
                                           .toDouble()

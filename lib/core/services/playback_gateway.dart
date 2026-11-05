@@ -49,10 +49,13 @@ class PersistentPlaybackGateway implements PlaybackGateway {
     }
   }
 
-  PlaybackPosition _decode(String id, Map v) => PlaybackPosition(
-      mediaId: id,
-      position: Duration(milliseconds: (v['position'] as num).toInt()),
-      duration: Duration(milliseconds: (v['duration'] as num).toInt()));
+  PlaybackPosition? _decode(String id, Map value) {
+    final position = value['position'], duration = value['duration'];
+    if (position is! num || duration is! num || !position.isFinite || !duration.isFinite || position < 0 || duration <= 0) {
+      return null;
+    }
+    return PlaybackPosition(mediaId: id, position: Duration(milliseconds: position.toInt()), duration: Duration(milliseconds: duration.toInt()));
+  }
   @override
   Future<void> savePosition(PlaybackPosition position) {
     final result = _pending.catchError((Object _) {}).then((_) async {
@@ -70,16 +73,19 @@ class PersistentPlaybackGateway implements PlaybackGateway {
 
   @override
   Future<PlaybackPosition?> loadPosition(String id) async {
+    await _pending.catchError((Object _) {});
     final data = await _read();
     return data[id] is Map ? _decode(id, data[id] as Map) : null;
   }
 
   @override
   Future<List<PlaybackPosition>> loadContinueWatching() async {
+    await _pending.catchError((Object _) {});
     final data = await _read();
     return data.entries
         .where((e) => e.value is Map)
         .map((e) => _decode(e.key, e.value as Map))
+        .whereType<PlaybackPosition>()
         .where((p) => p.progress > 0 && p.progress < .95)
         .toList();
   }
@@ -96,7 +102,8 @@ class StreamResolver {
     final uri = Uri.tryParse(url);
     if (uri == null ||
         !['http', 'https'].contains(uri.scheme) ||
-        uri.host.isEmpty) {
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty) {
       throw StateError('Endereço de reprodução inválido.');
     }
     return url;
