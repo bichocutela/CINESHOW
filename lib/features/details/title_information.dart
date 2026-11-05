@@ -131,10 +131,16 @@ class _TitleInformationState extends State<TitleInformation> {
                         context,
                         MaterialPageRoute<void>(
                             builder: (_) => ActorTitlesPage(
-                                name: actor, onOpen: widget.onOpenTitle,
-                                            archiveUrls: (data['castDetails'] as List? ?? []).whereType<Map>()
-                                              .where((v) => v['name'] == actor && v['archive_url'] is String)
-                                              .map((v) => v['archive_url'] as String).toList()))))
+                                name: actor,
+                                onOpen: widget.onOpenTitle,
+                                archiveUrls:
+                                    (data['castDetails'] as List? ?? [])
+                                        .whereType<Map>()
+                                        .where((v) =>
+                                            v['name'] == actor &&
+                                            v['archive_url'] is String)
+                                        .map((v) => v['archive_url'] as String)
+                                        .toList()))))
               ],
               const SizedBox(height: 18),
               const Text('Avaliações',

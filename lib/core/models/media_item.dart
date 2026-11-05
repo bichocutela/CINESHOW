@@ -5,7 +5,9 @@ class MediaSource {
       {required this.provider,
       required this.sourceId,
       required this.pageUrl,
-      this.posterUrl, this.imdbId, this.originalTitle});
+      this.posterUrl,
+      this.imdbId,
+      this.originalTitle});
   final String provider, sourceId, pageUrl;
   final String? posterUrl, imdbId, originalTitle;
   factory MediaSource.fromJson(Map<String, dynamic> j) => MediaSource(
@@ -13,7 +15,10 @@ class MediaSource {
       sourceId: j['source_id'].toString(),
       pageUrl: canonicalSourceUrl(j['page_url'] as String),
       posterUrl: j['poster_url'] as String?,
-      imdbId: j['imdb_id'] is String && RegExp(r'^tt\d{7,10}$').hasMatch(j['imdb_id'] as String) ? j['imdb_id'] as String : null,
+      imdbId: j['imdb_id'] is String &&
+              RegExp(r'^tt\d{7,10}$').hasMatch(j['imdb_id'] as String)
+          ? j['imdb_id'] as String
+          : null,
       originalTitle: j['original_title'] as String?);
   Map<String, dynamic> toJson() => {
         'provider': provider,

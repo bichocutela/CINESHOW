@@ -29,7 +29,10 @@ List<MediaItem> parseSuperflixCards(String html,
         continue;
       }
       final title = utf8.decode(base64Decode(a['data-title']!));
-      final imdbIds = RegExp(r'''data-copy=["'](tt\d{7,10})["']''').allMatches(block).map((v) => v[1]!).toSet();
+      final imdbIds = RegExp(r'''data-copy=["'](tt\d{7,10})["']''')
+          .allMatches(block)
+          .map((v) => v[1]!)
+          .toSet();
       final imdbId = imdbIds.length == 1 ? imdbIds.single : null;
       final image = attributes(
           RegExp(r'<img\b[^>]*>').firstMatch(block)?[0] ?? '')['src'];

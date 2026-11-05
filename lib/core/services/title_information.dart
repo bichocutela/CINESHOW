@@ -79,7 +79,8 @@ Map<String, dynamic> sourceFacts(String html) {
     if ((facts['direção'] ?? '').isNotEmpty) 'director': facts['direção'],
     if ((facts['lançamento'] ?? '').isNotEmpty) 'released': facts['lançamento'],
     if ((facts['ano'] ?? '').isNotEmpty) 'sourceYear': facts['ano'],
-    if (originalSourceTitle(html) != null) 'originalTitle': originalSourceTitle(html)
+    if (originalSourceTitle(html) != null)
+      'originalTitle': originalSourceTitle(html)
   };
 }
 
@@ -114,8 +115,13 @@ class TitleInformationService {
         final cached = jsonDecode(prefs.getString(key) ?? '{}') as Map;
         final at = DateTime.parse(cached['at'] as String);
         final data = cached['data'] as Map;
-        final hasRatings = data['imdbRating'] != null && data['rtRating'] != null && data['rtAudienceRating'] != null;
-        if (DateTime.now().difference(at) < (hasRatings ? const Duration(hours: 6) : const Duration(minutes: 5))) {
+        final hasRatings = data['imdbRating'] != null &&
+            data['rtRating'] != null &&
+            data['rtAudienceRating'] != null;
+        if (DateTime.now().difference(at) <
+            (hasRatings
+                ? const Duration(hours: 6)
+                : const Duration(minutes: 5))) {
           return Map<String, dynamic>.from(cached['data'] as Map);
         }
       } catch (_) {}
@@ -168,29 +174,54 @@ class TitleInformationService {
           return null;
         }
       }));
-      final linkedIds = sources.map((v) => v.imdbId ?? (RegExp(r'^tt\d{7,10}$').hasMatch(v.sourceId) ? v.sourceId : null)).whereType<String>().toSet();
-      for (final entry in sources.where((v) => v.provider == 'superflix' && v.imdbId == null)) {
+      final linkedIds = sources
+          .map((v) =>
+              v.imdbId ??
+              (RegExp(r'^tt\d{7,10}$').hasMatch(v.sourceId)
+                  ? v.sourceId
+                  : null))
+          .whereType<String>()
+          .toSet();
+      for (final entry in sources
+          .where((v) => v.provider == 'superflix' && v.imdbId == null)) {
         if (linkedIds.isNotEmpty) break;
         try {
-          final type = item.kind == 'movie' ? '1' : item.kind == 'anime' ? '3' : item.genre.toLowerCase().contains('dorama') ? '5' : '2';
-          final html = await read(Uri.https('superflixapi.fun', '/pesquisar', {'s': item.title, 'paged': '1', 'type': type}));
-          final matches = parseSuperflixCards(html, kind: item.kind).expand((v) => v.sources)
-              .where((v) => v.sourceId == entry.sourceId).map((v) => v.imdbId).whereType<String>().toSet();
+          final type = item.kind == 'movie'
+              ? '1'
+              : item.kind == 'anime'
+                  ? '3'
+                  : item.genre.toLowerCase().contains('dorama')
+                      ? '5'
+                      : '2';
+          final html = await read(Uri.https('superflixapi.fun', '/pesquisar',
+              {'s': item.title, 'paged': '1', 'type': type}));
+          final matches = parseSuperflixCards(html, kind: item.kind)
+              .expand((v) => v.sources)
+              .where((v) => v.sourceId == entry.sourceId)
+              .map((v) => v.imdbId)
+              .whereType<String>()
+              .toSet();
           if (matches.length == 1) linkedIds.add(matches.single);
-        } catch (_) { /* Cached entries can be enriched by the next catalog refresh. */ }
+        } catch (_) {
+          /* Cached entries can be enriched by the next catalog refresh. */
+        }
       }
-      final aliases = <String>{...sources.map((v) => v.originalTitle).whereType<String>()};
+      final aliases = <String>{
+        ...sources.map((v) => v.originalTitle).whereType<String>()
+      };
       final ids = pages
           .whereType<({MediaSource source, String html})>()
           .map((v) => sourceImdbId(v.html))
           .whereType<String>()
-          .toSet()..addAll(linkedIds);
-      final selectedId = source?.imdbId ?? pages
-          .whereType<({MediaSource source, String html})>()
-          .where((v) => v.source == source)
-          .map((v) => sourceImdbId(v.html))
-          .whereType<String>()
-          .firstOrNull;
+          .toSet()
+        ..addAll(linkedIds);
+      final selectedId = source?.imdbId ??
+          pages
+              .whereType<({MediaSource source, String html})>()
+              .where((v) => v.source == source)
+              .map((v) => sourceImdbId(v.html))
+              .whereType<String>()
+              .firstOrNull;
       var confirmedId = selectedId ?? (ids.length == 1 ? ids.single : null);
       result['imdbId'] = confirmedId;
       for (final page
@@ -207,7 +238,8 @@ class TitleInformationService {
           result['plotSource'] = page.source.label;
         }
         final facts = sourceFacts(page.html);
-        if (facts['originalTitle'] is String) aliases.add(facts['originalTitle'] as String);
+        if (facts['originalTitle'] is String)
+          aliases.add(facts['originalTitle'] as String);
         final people = publishedCredits(page.html);
         result['cast'] = mergeCast([
           ...(result['cast'] as List? ?? []),
@@ -236,7 +268,9 @@ class TitleInformationService {
         }
       }
       if (confirmedId == null) {
-        final identity = await findTitleIdentity(read, [...aliases, item.title], item.year, movie: item.kind == 'movie');
+        final identity = await findTitleIdentity(
+            read, [...aliases, item.title], item.year,
+            movie: item.kind == 'movie');
         if (identity != null) {
           confirmedId = identity['id'] as String;
           result['imdbId'] = confirmedId;
@@ -347,15 +381,22 @@ class TitleInformationService {
       };
       for (final lookupTitle in lookupTitles.take(2)) {
         try {
-          final public = await fetchPublicRotten(read, lookupTitle,
-              (result['year'] as num? ?? item.year).toInt(), movie: item.kind == 'movie');
-          result['cast'] = mergeCast([...(result['cast'] as List? ?? []), ...(public['cast'] as List? ?? [])]);
-          result['castDetails'] = [...(result['castDetails'] as List? ?? []), ...(public['castDetails'] as List? ?? [])];
+          final public = await fetchPublicRotten(
+              read, lookupTitle, (result['year'] as num? ?? item.year).toInt(),
+              movie: item.kind == 'movie');
+          result['cast'] = mergeCast([
+            ...(result['cast'] as List? ?? []),
+            ...(public['cast'] as List? ?? [])
+          ]);
+          result['castDetails'] = [
+            ...(result['castDetails'] as List? ?? []),
+            ...(public['castDetails'] as List? ?? [])
+          ];
           for (final field in ['rtUrl', 'rtRating', 'rtAudienceRating']) {
             if (public[field] != null) result[field] = public[field];
           }
           if (public.isNotEmpty) break;
-        } catch (_) { /* Try the next known title, never a fabricated score. */ }
+        } catch (_) {/* Try the next known title, never a fabricated score. */}
       }
     } finally {
       client.close();
