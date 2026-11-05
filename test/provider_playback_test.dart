@@ -208,4 +208,50 @@ void main() {
       resolver.close();
     }
   });
+  test('Mega anime page resolves its published episode player route', () async {
+    final calls = <Uri>[];
+    final resolver =
+        ProviderPlaybackResolver(client: MockClient((request) async {
+      calls.add(request.url);
+      switch (request.url.path) {
+        case '/anime/dragon-ball-daima':
+          return http.Response(
+              '<iframe id="awPlayerFrame" src="/player.php?type=anime&amp;id=236994&amp;season=1&amp;episode=1"></iframe>',
+              200);
+        case '/player.php':
+          expect(request.url.queryParameters['type'], 'anime');
+          return http.Response(
+              'const apiUrl = "/generate_token.php?type=anime&id=236994&season=1&episode=1";',
+              200);
+        case '/generate_token.php':
+          expect(request.url.queryParameters['episode'], '1');
+          return http.Response(
+              jsonEncode({
+                'ok': true,
+                'mode': 'iframe',
+                'url': 'https://redeflixapi.bar/serie/236994/1/1'
+              }),
+              200);
+        default:
+          return http.Response('missing', 404);
+      }
+    }));
+    try {
+      const source = MediaSource(
+          provider: 'megafilmes',
+          sourceId: 'dragon-ball-daima',
+          pageUrl: 'https://megafilmeshd1.com/anime/dragon-ball-daima');
+      final options =
+          await resolver.resolve(item, source, pageUrl: source.pageUrl);
+      expect(options.single.direct, isFalse);
+      expect(options.single.url, 'https://redeflixapi.bar/serie/236994/1/1');
+      expect(calls.map((v) => v.path), [
+        '/anime/dragon-ball-daima',
+        '/player.php',
+        '/generate_token.php'
+      ]);
+    } finally {
+      resolver.close();
+    }
+  });
 }

@@ -426,7 +426,7 @@ class ProviderPlaybackResolver {
   Future<List<ProviderPlaybackOption>> _mega(
       MediaSource source, String pageUrl) async {
     final input = Uri.parse(pageUrl);
-    if (!RegExp(r'^/(?:filme|serie|novela|dorama|player\.php)(?:/|$)')
+    if (!RegExp(r'^/(?:filme|serie|novela|dorama|anime|player\.php)(?:/|$)')
         .hasMatch(input.path)) {
       throw StateError('Endereço Mega Filmes inválido.');
     }
