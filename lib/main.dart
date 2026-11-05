@@ -91,8 +91,9 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
       final r = await catalog.refresh();
       if (!mounted) return;
       setState(() {
-        if (r.items.isNotEmpty)
+        if (r.items.isNotEmpty) {
           items = catalog.mergeItems([...items, ...r.items]);
+        }
         errors = r.errors;
         loading = false;
       });
@@ -164,8 +165,9 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
                 'Algumas fontes falharam. Toque novamente para tentar as páginas pendentes.')));
       }
     } catch (_) {
-      if (mounted && generation == categoryRequest)
+      if (mounted && generation == categoryRequest) {
         setState(() => loadingMore = false);
+      }
     }
   }
 
@@ -459,7 +461,7 @@ class Cover extends StatelessWidget {
                 top: 6,
                 child: DecoratedBox(
                     decoration: BoxDecoration(
-                        color: Color(0xFF682D75),
+                        color: const Color(0xFF682D75),
                         borderRadius: BorderRadius.circular(6)),
                     child: Padding(
                         padding: const EdgeInsets.symmetric(
@@ -755,10 +757,11 @@ class _DetailsState extends State<DetailsPage> {
                       .toggle(widget.item, selected!, episodes);
                   if (mounted) setState(() => following = value);
                 } catch (_) {
-                  if (context.mounted)
+                  if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                         content: Text(
                             'Não foi possível acompanhar este título. Limite de 10 títulos.')));
+                  }
                 }
               })
       ]),

@@ -251,8 +251,9 @@ class LiveCatalog {
     for (final provider in ['rtfilmes', 'tontons', 'amyflix']) {
       if (slug == 'amy-gl') {
         if (provider == 'amyflix') {
-          if (kind != 'series')
+          if (kind != 'series') {
             paths['amyflix:gl-movie'] = '/genero/filmes-saficos-atualizados/';
+          }
           if (kind != 'movie') {
             paths['amyflix:gl-current'] = '/genero/em-lancamento/';
             paths['amyflix:gl-complete'] = '/genero/completo/';

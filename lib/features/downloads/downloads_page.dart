@@ -49,14 +49,16 @@ class _DownloadsPageState extends State<DownloadsPage>
     polling = true;
     try {
       final next = await MediaDownloads.instance.list();
-      if (mounted)
+      if (mounted) {
         setState(() {
           items = next;
           error = null;
         });
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => error = 'Não foi possível consultar os downloads.');
+      }
     } finally {
       polling = false;
     }

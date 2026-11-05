@@ -127,10 +127,11 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       await widget.onNext!(fullscreen);
     } catch (_) {
       handingOffFullscreen = false;
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text(
                 'Não foi possível abrir o próximo capítulo. Tente novamente.')));
+      }
     } finally {
       if (mounted) setState(() => advancing = false);
     }

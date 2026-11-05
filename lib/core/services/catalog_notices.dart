@@ -55,7 +55,7 @@ class CatalogNotices {
     final next = <Map<String, dynamic>>[];
     if (stored != null) {
       for (final item in items) {
-        if (!seen.contains(item.id))
+        if (!seen.contains(item.id)) {
           next.add({
             'id': 'catalog:${item.id}',
             'title': item.title,
@@ -65,6 +65,7 @@ class CatalogNotices {
             'created': DateTime.now().toIso8601String(),
             'read': false
           });
+        }
       }
     }
     seen.addAll(items.map((v) => v.id));
@@ -94,8 +95,9 @@ class CatalogNotices {
     if (existing.isNotEmpty) {
       rows.removeWhere((v) => (v['item'] as Map)['id'] == item.id);
     } else {
-      if (rows.length >= 10)
+      if (rows.length >= 10) {
         throw StateError('Acompanhe até 10 títulos por vez.');
+      }
       rows.add({'item': item.toJson(), 'source': source.toJson()});
       await prefs.remove(_chapterKey(source));
       if (chapters.isNotEmpty) {
@@ -113,7 +115,9 @@ class CatalogNotices {
     final rows = await watched();
     if (!rows.any((v) =>
         (v['item'] as Map)['id'] == item.id &&
-        (v['source'] as Map)['provider'] == source.provider)) return;
+        (v['source'] as Map)['provider'] == source.provider)) {
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     final key = _chapterKey(source);
     final stored = prefs.getStringList(key);

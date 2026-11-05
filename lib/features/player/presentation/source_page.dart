@@ -128,9 +128,10 @@ class _SourcePageState extends State<SourcePage> {
     try {
       await widget.onNext!();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('Não foi possível abrir o próximo capítulo.')));
+      }
     } finally {
       if (mounted) setState(() => advancing = false);
     }

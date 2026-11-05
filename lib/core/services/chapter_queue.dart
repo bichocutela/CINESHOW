@@ -24,8 +24,9 @@ List<Map<String, dynamic>> orderedChapters(
   (int, int, String) order(Map<String, dynamic> value) {
     final uri = Uri.parse(chapterUrl(value));
     final numbers = RegExp(r'-(\d+)x(\d+)/?$').firstMatch(uri.path);
-    if (numbers != null)
+    if (numbers != null) {
       return (int.parse(numbers[1]!), int.parse(numbers[2]!), '');
+    }
     return (0, 0, chapterIdentity(chapterUrl(value)));
   }
 

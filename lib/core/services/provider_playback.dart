@@ -286,8 +286,9 @@ class ProviderPlaybackResolver {
         discover: true);
     if (path.path.startsWith('/novela/')) {
       final episodes = parseNovelasflixEpisodes(html);
-      if (episodes.isEmpty)
+      if (episodes.isEmpty) {
         throw StateError('Nenhum capítulo localizado nesta fonte.');
+      }
       episodePath = Uri.parse(episodes.last['page_url'] as String).path;
       html = await _get(episodePath);
     }
@@ -302,8 +303,9 @@ class ProviderPlaybackResolver {
         final raw = attributes(tag[0]!)['src'];
         if (raw == null) continue;
         final uri = base.resolve(raw);
-        if (uri.scheme != 'https' || !await _isVideo(uri.toString(), headers))
+        if (uri.scheme != 'https' || !await _isVideo(uri.toString(), headers)) {
           continue;
+        }
         options.add(ProviderPlaybackOption(
             url: uri.toString(),
             label: 'Novelasflix · vídeo direto',
@@ -331,8 +333,9 @@ class ProviderPlaybackResolver {
           id: 'novelasflix:$episodePath',
           headers: headers));
     }
-    if (options.isEmpty)
+    if (options.isEmpty) {
       throw StateError('A fonte não retornou um player compatível.');
+    }
     final unique = <String, ProviderPlaybackOption>{};
     for (final option in options) {
       unique.putIfAbsent(option.url, () => option);
