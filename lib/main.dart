@@ -240,6 +240,11 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _recent() async {
+    final rows = await ContinueWatching().list();
+    if (mounted) setState(() => recent = rows);
+  }
+
   Future<void> _details(MediaItem item,
       {ContinueEntry? resume, String? initialEpisode}) async {
     await Navigator.push(
