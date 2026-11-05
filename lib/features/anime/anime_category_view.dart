@@ -73,9 +73,10 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
         });
       }
     } catch (_) {
-      if (mounted && request == generation)
+      if (mounted && request == generation) {
         setState(
             () => error = 'A fonte não respondeu. Exibindo os dados salvos.');
+      }
     } finally {
       if (mounted && request == generation) setState(() => loading = false);
     }
@@ -97,9 +98,10 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
         final rows = await service.notices(markRead: true);
         if (mounted && request == generation) setState(() => notices = rows);
       } catch (_) {
-        if (mounted && request == generation)
+        if (mounted && request == generation) {
           setState(
               () => error = 'Não foi possível carregar as novidades agora.');
+        }
       }
     }
   }

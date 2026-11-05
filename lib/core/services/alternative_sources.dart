@@ -84,7 +84,9 @@ MediaItem combineAlternativeSources(
         ? anchor.year == b.year
         : years.length <= 1;
     if (sharedId ||
-        (compatibleYear && (sharedSource || _titleMatches(anchor, b)))) add(b);
+        (compatibleYear && (sharedSource || _titleMatches(anchor, b)))) {
+      add(b);
+    }
   }
   return MediaItem(
       id: anchor.id,

@@ -61,11 +61,12 @@ class FakeAnime extends AnimeCatalogService {
   Future<({List<MediaItem> items, bool more})> list(
       {String? letter, String query = '', int page = 1}) async {
     calls.add(query);
-    if (delay)
+    if (delay) {
       return pending
           .putIfAbsent(
               query, Completer<({List<MediaItem> items, bool more})>.new)
           .future;
+    }
     return (items: <MediaItem>[], more: false);
   }
 }
@@ -349,12 +350,14 @@ void main() {
       (tester) async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(MediaDownloads.channel, (call) async {
-      if (call.method == 'list')
+      if (call.method == 'list') {
         return [
           {'id': 1, 'title': 'Arquivo', 'state': 'ready'}
         ];
-      if (call.method == 'remove')
+      }
+      if (call.method == 'remove') {
         throw PlatformException(code: 'FAIL', message: 'Cannot delete');
+      }
       return null;
     });
     addTearDown(() => TestDefaultBinaryMessengerBinding

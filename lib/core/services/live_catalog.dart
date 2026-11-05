@@ -463,9 +463,7 @@ class LiveCatalog {
                 provider: provider,
                 sourceId: e.key.toString(),
                 pageUrl: link,
-                audio: audioLabel(
-                    '${catalogAudio(block)} ${provider == 'amyflix' ? audioLabel(plain(heading)) : ''}'),
-                quality: catalogQuality(block),
+                audio: provider == 'amyflix' ? audioLabel(plain(j['title'] as String)) : '',
                 posterUrl: j['img'] as String?)
           ]);
     }).toList();

@@ -23,7 +23,7 @@ class CatalogNotices {
     try {
       return ((jsonDecode(prefs.getString(_events) ?? '[]')) as List)
           .whereType<Map>()
-          .map((v) => Map<String, dynamic>.from(v as Map))
+          .map((v) => Map<String, dynamic>.from(v))
           .toList();
     } catch (_) {
       return [];

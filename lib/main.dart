@@ -226,15 +226,17 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
   Future<void> _favorite(MediaItem item) async {
     try {
       final next = await favoriteStore.toggle(item);
-      if (mounted)
+      if (mounted) {
         setState(() {
           favoriteState = next;
+      }
         });
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text(
                 'Não foi possível salvar a minha lista. Tente novamente.')));
+      }
     }
   }
 
@@ -665,9 +667,10 @@ class _DetailsState extends State<DetailsPage> {
     if (item.kind != 'movie' && selected != null) _episodes();
     if (widget.resumePage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted)
+        if (mounted) {
           _watchSource(widget.resumePage!,
               auto: true, preferredPlayer: widget.resumePlayer);
+        }
       });
     }
   }

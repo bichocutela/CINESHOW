@@ -98,10 +98,11 @@ class _DownloadsPageState extends State<DownloadsPage>
       await MediaDownloads.instance.remove(id);
       if (mounted) await _load();
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content:
                 Text('Não foi possível excluir o download. Tente novamente.')));
+      }
     }
   }
 
