@@ -70,7 +70,13 @@ class _SourcePageState extends State<SourcePage> {
                 playerUrl = target;
                 unawaited(Future<void>(() async {
                   if (mounted) {
-                    await _retry();
+                    try {
+                      await _retry();
+                    } catch (_) {
+                      if (mounted) {
+                        setState(() => failed = true);
+                      }
+                    }
                   }
                 }));
               }
