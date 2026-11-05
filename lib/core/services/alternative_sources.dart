@@ -112,33 +112,7 @@ class SourceDiscovery {
   Future<MediaItem> discover(MediaItem item) async {
     final query = cleanAudioTitle(item.title)
         .replaceAll(
-            RegExp(r'\s*\(?\b(?:Dublado|Legendado)\)?\s*, caseSensitive: false),
-            '')
-        .trim();
-    Future<List<MediaItem>> safe(
-        Future<List<MediaItem>> Function() task) async {
-      try {
-        return await task().timeout(const Duration(seconds: 30));
-      } catch (_) {
-        return [];
-      }
-    }
-
-    final batches = await Future.wait([
-      safe(() async => (await catalog.refresh(query: query)).items),
-      safe(() => catalog.megaAlternatives(query)),
-      if (item.kind != 'movie') ...[
-        safe(
-            () async => (await AnimeCatalogService().list(query: query)).items),
-        safe(() async => (await AnimeCatalogService(provider: 'superflix')
-                .list(query: query))
-            .items),
-      ]
-    ]);
-    return combineAlternativeSources(item, batches.expand((v) => v).toList());
-  }
-}
-, caseSensitive: false),
+            RegExp(r'\s*\(?\b(?:Dublado|Legendado)\)?\s*$', caseSensitive: false),
             '')
         .trim();
     Future<List<MediaItem>> safe(
