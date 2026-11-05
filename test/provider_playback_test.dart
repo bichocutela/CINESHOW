@@ -245,11 +245,8 @@ void main() {
           await resolver.resolve(item, source, pageUrl: source.pageUrl);
       expect(options.single.direct, isFalse);
       expect(options.single.url, 'https://redeflixapi.bar/serie/236994/1/1');
-      expect(calls.map((v) => v.path), [
-        '/anime/dragon-ball-daima',
-        '/player.php',
-        '/generate_token.php'
-      ]);
+      expect(calls.map((v) => v.path),
+          ['/anime/dragon-ball-daima', '/player.php', '/generate_token.php']);
     } finally {
       resolver.close();
     }
