@@ -112,7 +112,8 @@ class SourceDiscovery {
   Future<MediaItem> discover(MediaItem item) async {
     final query = cleanAudioTitle(item.title)
         .replaceAll(
-            RegExp(r'\s*\(?\b(?:Dublado|Legendado)\)?\s*$', caseSensitive: false),
+            RegExp(r'\s*\(?\b(?:Dublado|Legendado)\)?\s*$',
+                caseSensitive: false),
             '')
         .trim();
     Future<List<MediaItem>> safe(
