@@ -7,7 +7,9 @@ class MediaSource {
       required this.pageUrl,
       this.posterUrl,
       this.imdbId,
-      this.originalTitle, this.audio = '', this.quality = ''});
+      this.originalTitle,
+      this.audio = '',
+      this.quality = ''});
   final String provider, sourceId, pageUrl;
   final String? posterUrl, imdbId, originalTitle;
   final String audio, quality;
@@ -21,7 +23,8 @@ class MediaSource {
           ? j['imdb_id'] as String
           : null,
       originalTitle: j['original_title'] as String?,
-      audio: j['audio'] as String? ?? '', quality: j['quality'] as String? ?? '');
+      audio: j['audio'] as String? ?? '',
+      quality: j['quality'] as String? ?? '');
   Map<String, dynamic> toJson() => {
         'provider': provider,
         'source_id': sourceId,
@@ -32,7 +35,11 @@ class MediaSource {
         if (imdbId != null) 'imdb_id': imdbId,
         if (originalTitle != null) 'original_title': originalTitle
       };
-  String get optionLabel => [label, if (audio.isNotEmpty) audio, if (quality.isNotEmpty) quality].join(' · ');
+  String get optionLabel => [
+        label,
+        if (audio.isNotEmpty) audio,
+        if (quality.isNotEmpty) quality
+      ].join(' · ');
   String get label => switch (provider) {
         'rtfilmes' => 'Pobreflix',
         'tontons' => 'TopFlix',
@@ -73,8 +80,9 @@ class MediaItem {
   final bool isSeries;
   final List<MediaSource> sources;
   factory MediaItem.fromJson(Map<String, dynamic> j) => MediaItem(
-      id:
-          j['id'] is String && (j['id'] as String).isNotEmpty ? j['id'] as String : '${j['kind'] ?? 'movie'}:${(j['title'] as String).toLowerCase().trim()}:${j['year'] ?? 0}',
+      id: j['id'] is String && (j['id'] as String).isNotEmpty
+          ? j['id'] as String
+          : '${j['kind'] ?? 'movie'}:${(j['title'] as String).toLowerCase().trim()}:${j['year'] ?? 0}',
       title: j['title'] as String,
       description: (j['description'] as String?) ?? '',
       genre: (j['genre'] as String?) ?? '',
@@ -109,7 +117,10 @@ class MediaItem {
         'sources': sources.map((s) => s.toJson()).toList()
       };
   MediaItem copyWith(
-          {String? streamUrl, String? posterUrl, String? backdropUrl, List<MediaSource>? sources}) =>
+          {String? streamUrl,
+          String? posterUrl,
+          String? backdropUrl,
+          List<MediaSource>? sources}) =>
       MediaItem(
           id: id,
           title: title,

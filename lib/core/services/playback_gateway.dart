@@ -51,11 +51,20 @@ class PersistentPlaybackGateway implements PlaybackGateway {
 
   PlaybackPosition? _decode(String id, Map value) {
     final position = value['position'], duration = value['duration'];
-    if (position is! num || duration is! num || !position.isFinite || !duration.isFinite || position < 0 || duration <= 0) {
+    if (position is! num ||
+        duration is! num ||
+        !position.isFinite ||
+        !duration.isFinite ||
+        position < 0 ||
+        duration <= 0) {
       return null;
     }
-    return PlaybackPosition(mediaId: id, position: Duration(milliseconds: position.toInt()), duration: Duration(milliseconds: duration.toInt()));
+    return PlaybackPosition(
+        mediaId: id,
+        position: Duration(milliseconds: position.toInt()),
+        duration: Duration(milliseconds: duration.toInt()));
   }
+
   @override
   Future<void> savePosition(PlaybackPosition position) {
     final result = _pending.catchError((Object _) {}).then((_) async {

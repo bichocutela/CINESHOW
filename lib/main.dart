@@ -108,7 +108,7 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
           items = catalog.mergeItems([...items, ...r.items]);
         }
         favoriteState = savedFavorites;
-          arrivals = sorted;
+        arrivals = sorted;
         errors = r.errors;
         loading = false;
       });
@@ -226,9 +226,15 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
   Future<void> _favorite(MediaItem item) async {
     try {
       final next = await favoriteStore.toggle(item);
-      if (mounted) setState(() { favoriteState = next; });
+      if (mounted)
+        setState(() {
+          favoriteState = next;
+        });
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Não foi possível salvar a minha lista. Tente novamente.')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'Não foi possível salvar a minha lista. Tente novamente.')));
     }
   }
 
@@ -618,7 +624,9 @@ class DetailsPage extends StatefulWidget {
       required this.onFavorite,
       required this.onOpenTitle,
       this.resumeSource,
-      this.resumePage, this.resumePlayer, this.sourceDiscovery});
+      this.resumePage,
+      this.resumePlayer,
+      this.sourceDiscovery});
   final MediaItem item;
   final LiveCatalog catalog;
   final bool isFavorite;
@@ -635,8 +643,7 @@ class _DetailsState extends State<DetailsPage> {
   late MediaItem item = widget.item;
   bool discoveringSources = false;
   late bool favorite = widget.isFavorite;
-  late MediaSource? selected =
-      widget.resumeSource ?? item.sources.firstOrNull;
+  late MediaSource? selected = widget.resumeSource ?? item.sources.firstOrNull;
   List<Map<String, dynamic>> episodes = [];
   int episodePage = 0;
   List<Map<String, dynamic>> get visibleEpisodes =>
@@ -658,7 +665,9 @@ class _DetailsState extends State<DetailsPage> {
     if (item.kind != 'movie' && selected != null) _episodes();
     if (widget.resumePage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _watchSource(widget.resumePage!, auto: true, preferredPlayer: widget.resumePlayer);
+        if (mounted)
+          _watchSource(widget.resumePage!,
+              auto: true, preferredPlayer: widget.resumePlayer);
       });
     }
   }
@@ -667,11 +676,16 @@ class _DetailsState extends State<DetailsPage> {
     if (discoveringSources) return;
     setState(() => discoveringSources = true);
     try {
-      final enriched = await (widget.sourceDiscovery ?? SourceDiscovery(widget.catalog).discover)(item);
+      final enriched = await (widget.sourceDiscovery ??
+          SourceDiscovery(widget.catalog).discover)(item);
       if (!mounted) return;
       setState(() {
         item = enriched;
-        selected = enriched.sources.where((s) => sameSource(s, selected)).firstOrNull ?? selected ?? enriched.sources.firstOrNull;
+        selected = enriched.sources
+                .where((s) => sameSource(s, selected))
+                .firstOrNull ??
+            selected ??
+            enriched.sources.firstOrNull;
       });
     } catch (_) {
       // Existing sources remain usable when discovery is unavailable.
@@ -735,8 +749,7 @@ class _DetailsState extends State<DetailsPage> {
     if (item.kind != 'movie' && url == source.pageUrl) {
       final ordered = orderedChapters(episodes);
       if (ordered.isNotEmpty) {
-        url = chapterUrl(
-            item.kind == 'anime' ? ordered.first : ordered.last);
+        url = chapterUrl(item.kind == 'anime' ? ordered.first : ordered.last);
       }
     }
     final resolver = ProviderPlaybackResolver();
@@ -793,7 +806,8 @@ class _DetailsState extends State<DetailsPage> {
       final media = playable.media(item);
       if (playable.direct) {
         try {
-          await ContinueWatching().save(item, source, url, media.id, playerLabel: playable.label);
+          await ContinueWatching()
+              .save(item, source, url, media.id, playerLabel: playable.label);
         } catch (_) {
           // A history storage failure must not stop playback.
         }
@@ -842,9 +856,7 @@ class _DetailsState extends State<DetailsPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: Text(item.title), actions: [
-        if (item.kind != 'movie' &&
-            item.kind != 'anime' &&
-            selected != null)
+        if (item.kind != 'movie' && item.kind != 'anime' && selected != null)
           IconButton(
               tooltip: following
                   ? 'Parar de acompanhar capítulos'
@@ -874,8 +886,7 @@ class _DetailsState extends State<DetailsPage> {
                 SizedBox(
                     height: 260,
                     child: Center(
-                        child: SizedBox(
-                            width: 180, child: Cover(item: item)))),
+                        child: SizedBox(width: 180, child: Cover(item: item)))),
                 const SizedBox(height: 20),
                 Text(item.title,
                     style: const TextStyle(
@@ -885,11 +896,23 @@ class _DetailsState extends State<DetailsPage> {
                     style: const TextStyle(color: Colors.white60)),
                 const SizedBox(height: 16),
                 Row(children: [
-                  const Expanded(child: Text('Onde assistir', style: TextStyle(fontWeight: FontWeight.w700))),
-                  if (discoveringSources) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  else IconButton(tooltip: 'Buscar outras fontes', onPressed: _discoverSources, icon: const Icon(Icons.refresh))
+                  const Expanded(
+                      child: Text('Onde assistir',
+                          style: TextStyle(fontWeight: FontWeight.w700))),
+                  if (discoveringSources)
+                    const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                  else
+                    IconButton(
+                        tooltip: 'Buscar outras fontes',
+                        onPressed: _discoverSources,
+                        icon: const Icon(Icons.refresh))
                 ]),
-                if (discoveringSources) const Text('Buscando outras fontes…', style: TextStyle(color: Colors.white60)),
+                if (discoveringSources)
+                  const Text('Buscando outras fontes…',
+                      style: TextStyle(color: Colors.white60)),
                 Wrap(spacing: 8, runSpacing: 4, children: [
                   for (final s in item.sources)
                     ChoiceChip(
@@ -899,8 +922,7 @@ class _DetailsState extends State<DetailsPage> {
                             ? null
                             : (_) {
                                 setState(() => selected = s);
-                                if (item.kind != 'movie' &&
-                                    selected != null) {
+                                if (item.kind != 'movie' && selected != null) {
                                   _episodes();
                                 }
                               })
@@ -914,8 +936,7 @@ class _DetailsState extends State<DetailsPage> {
                               builder: (_) => PlayerPage(media: item))),
                       icon: const Icon(Icons.play_arrow),
                       label: const Text('Assistir no CINESHOW')),
-                if (item.streamUrl?.isNotEmpty != true &&
-                    selected != null)
+                if (item.streamUrl?.isNotEmpty != true && selected != null)
                   FilledButton.icon(
                       onPressed: resolving
                           ? null
@@ -924,8 +945,7 @@ class _DetailsState extends State<DetailsPage> {
                       label: Text(resolving
                           ? 'Localizando vídeo...'
                           : 'Assistir no app')),
-                if (selected != null &&
-                    item.streamUrl?.isNotEmpty != true)
+                if (selected != null && item.streamUrl?.isNotEmpty != true)
                   OutlinedButton.icon(
                       onPressed: resolving
                           ? null

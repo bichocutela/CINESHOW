@@ -8,9 +8,11 @@ class CatalogNotices {
   static Future<void> _pending = Future.value();
   Future<T> _transaction<T>(Future<T> Function() operation) {
     final result = _pending.catchError((Object _) {}).then((_) => operation());
-    _pending = result.then<void>((_) {}, onError: (Object _, StackTrace stack) {});
+    _pending =
+        result.then<void>((_) {}, onError: (Object _, StackTrace stack) {});
     return result;
   }
+
   final unread = ValueNotifier<int>(0);
   static const _events = 'cineshow.notices.v1';
   static const _seen = 'cineshow.notices.catalog.v1';
@@ -55,7 +57,8 @@ class CatalogNotices {
     await refreshBadge();
   }
 
-  Future<void> syncCatalog(List<MediaItem> items) => _transaction(() => _syncCatalog(items));
+  Future<void> syncCatalog(List<MediaItem> items) =>
+      _transaction(() => _syncCatalog(items));
   Future<void> _syncCatalog(List<MediaItem> items) async {
     if (items.isEmpty) return;
     final prefs = await SharedPreferences.getInstance();
@@ -86,14 +89,19 @@ class CatalogNotices {
     final prefs = await SharedPreferences.getInstance();
     final rows = <Map<String, dynamic>>[];
     try {
-      for (final raw in (jsonDecode(prefs.getString(_watch) ?? '[]') as List).whereType<Map>()) {
+      for (final raw in (jsonDecode(prefs.getString(_watch) ?? '[]') as List)
+          .whereType<Map>()) {
         try {
-          final item = MediaItem.fromJson(Map<String, dynamic>.from(raw['item'] as Map));
-          final source = MediaSource.fromJson(Map<String, dynamic>.from(raw['source'] as Map));
+          final item =
+              MediaItem.fromJson(Map<String, dynamic>.from(raw['item'] as Map));
+          final source = MediaSource.fromJson(
+              Map<String, dynamic>.from(raw['source'] as Map));
           rows.add({'item': item.toJson(), 'source': source.toJson()});
-        } catch (_) { /* Preserve the other followed titles. */ }
+        } catch (_) {/* Preserve the other followed titles. */}
       }
-    } catch (_) { /* An invalid cache must not interrupt catalog synchronization. */ }
+    } catch (_) {
+      /* An invalid cache must not interrupt catalog synchronization. */
+    }
     return rows;
   }
 
@@ -104,9 +112,11 @@ class CatalogNotices {
       'cineshow.notices.chapters.${source.provider}:${source.sourceId}';
 
   Future<bool> toggle(MediaItem item, MediaSource source,
-      List<Map<String, dynamic>> chapters) => _transaction(() => _toggle(item, source, chapters));
+          List<Map<String, dynamic>> chapters) =>
+      _transaction(() => _toggle(item, source, chapters));
 
-  Future<bool> _toggle(MediaItem item, MediaSource source, List<Map<String, dynamic>> chapters) async {
+  Future<bool> _toggle(MediaItem item, MediaSource source,
+      List<Map<String, dynamic>> chapters) async {
     final rows = await watched();
     final existing =
         rows.where((v) => (v['item'] as Map)['id'] == item.id).toList();
@@ -129,9 +139,11 @@ class CatalogNotices {
   }
 
   Future<void> syncChapters(MediaItem item, MediaSource source,
-      List<Map<String, dynamic>> chapters) => _transaction(() => _syncChapters(item, source, chapters));
+          List<Map<String, dynamic>> chapters) =>
+      _transaction(() => _syncChapters(item, source, chapters));
 
-  Future<void> _syncChapters(MediaItem item, MediaSource source, List<Map<String, dynamic>> chapters) async {
+  Future<void> _syncChapters(MediaItem item, MediaSource source,
+      List<Map<String, dynamic>> chapters) async {
     if (chapters.isEmpty) return;
     final rows = await watched();
     if (!rows.any((v) =>

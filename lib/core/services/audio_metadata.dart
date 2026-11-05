@@ -27,7 +27,15 @@ String cleanAudioTitle(String title) => title
 
 // Read only explicit quality badges, never SEO descriptions or advertising text.
 String catalogQuality(String html) {
-  final badges = RegExp(r'''<(?:span|div)[^>]+class=["'](?:[^"']*\s)?quality(?:\s[^"']*)?["'][^>]*>(.*?)</(?:span|div)>''', dotAll: true).allMatches(html);
-  final text = badges.map((m) => m[1]!.replaceAll(RegExp('<[^>]+>'), '')).join(' ');
-  return RegExp(r'\b(?:2160|1440|1080|720|480|360)p\b', caseSensitive: false).allMatches(text).map((m) => m[0]!.toLowerCase()).toSet().join(' / ');
+  final badges = RegExp(
+          r'''<(?:span|div)[^>]+class=["'](?:[^"']*\s)?quality(?:\s[^"']*)?["'][^>]*>(.*?)</(?:span|div)>''',
+          dotAll: true)
+      .allMatches(html);
+  final text =
+      badges.map((m) => m[1]!.replaceAll(RegExp('<[^>]+>'), '')).join(' ');
+  return RegExp(r'\b(?:2160|1440|1080|720|480|360)p\b', caseSensitive: false)
+      .allMatches(text)
+      .map((m) => m[0]!.toLowerCase())
+      .toSet()
+      .join(' / ');
 }

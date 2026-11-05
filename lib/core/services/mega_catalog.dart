@@ -63,7 +63,8 @@ List<MediaItem> parseMegaCards(String html) {
               provider: 'megafilmes',
               sourceId: match[2]!,
               pageUrl: uri.toString(),
-              audio: catalogAudio(value), quality: catalogQuality(value),
+              audio: catalogAudio(value),
+              quality: catalogQuality(value),
               posterUrl: picture)
         ]);
   }

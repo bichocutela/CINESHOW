@@ -58,7 +58,8 @@ List<MediaItem> parseSuperflixCards(String html,
             MediaSource(
                 provider: 'superflix',
                 sourceId: uri.pathSegments.lastWhere((v) => v.isNotEmpty),
-                imdbId: imdbId, audio: audio,
+                imdbId: imdbId,
+                audio: audio,
                 pageUrl: uri.toString(),
                 posterUrl: image)
           ]);

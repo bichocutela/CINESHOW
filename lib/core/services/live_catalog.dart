@@ -144,14 +144,18 @@ class LiveCatalog {
   Future<List<MediaItem>> _tvAberta({String? query}) =>
       TvAbertaService().novelas(query: query);
 
-  Future<List<MediaItem>> megaAlternatives(String query) => _mega(query: query, includeAnime: true);
+  Future<List<MediaItem>> megaAlternatives(String query) =>
+      _mega(query: query, includeAnime: true);
 
-  Future<List<MediaItem>> _mega({String? query, bool includeAnime = false}) async {
+  Future<List<MediaItem>> _mega(
+      {String? query, bool includeAnime = false}) async {
     final session = sessionFactory(megaOrigin);
     try {
       final html = await session.get(
           query == null ? '/' : '/search?q=${Uri.encodeQueryComponent(query)}');
-      return parseMegaCards(html).where((v) => includeAnime || v.kind != 'anime').toList();
+      return parseMegaCards(html)
+          .where((v) => includeAnime || v.kind != 'anime')
+          .toList();
     } finally {
       session.close();
     }
@@ -379,10 +383,16 @@ class LiveCatalog {
       }
       final img = RegExp(r'<img\b[^>]*>').firstMatch(block);
       final ia = attributes(img?[0] ?? '');
-      final data = RegExp(r'''<div[^>]+class=["']data["'][^>]*>(.*?)</div>''', dotAll: true).firstMatch(block)?[1];
+      final data = RegExp(r'''<div[^>]+class=["']data["'][^>]*>(.*?)</div>''',
+              dotAll: true)
+          .firstMatch(block)?[1];
       final afterTitle = title == null ? '' : block.substring(title.end);
-      final dateSpans = RegExp(r'<span[^>]*>(.*?)</span>', dotAll: true).allMatches(data ?? afterTitle);
-      final years = dateSpans.expand((span) => RegExp(r'\b(?:19|20)\d{2}\b').allMatches(plain(span[1]!))).toList();
+      final dateSpans = RegExp(r'<span[^>]*>(.*?)</span>', dotAll: true)
+          .allMatches(data ?? afterTitle);
+      final years = dateSpans
+          .expand((span) =>
+              RegExp(r'\b(?:19|20)\d{2}\b').allMatches(plain(span[1]!)))
+          .toList();
       final kind = link.contains('/serie/') ? 'series' : 'movie';
       result.add(MediaItem(
           id: '$provider:$id',
@@ -404,7 +414,8 @@ class LiveCatalog {
                 provider: provider,
                 sourceId: id,
                 pageUrl: link,
-                audio: audioLabel('${catalogAudio(block)} ${provider == 'amyflix' ? audioLabel(plain(heading)) : ''}'),
+                audio: audioLabel(
+                    '${catalogAudio(block)} ${provider == 'amyflix' ? audioLabel(plain(heading)) : ''}'),
                 quality: catalogQuality(block),
                 posterUrl: catalogPoster(ia, origins[provider]!))
           ]));
@@ -452,7 +463,8 @@ class LiveCatalog {
                 provider: provider,
                 sourceId: e.key.toString(),
                 pageUrl: link,
-                audio: audioLabel('${catalogAudio(block)} ${provider == 'amyflix' ? audioLabel(plain(heading)) : ''}'),
+                audio: audioLabel(
+                    '${catalogAudio(block)} ${provider == 'amyflix' ? audioLabel(plain(heading)) : ''}'),
                 quality: catalogQuality(block),
                 posterUrl: j['img'] as String?)
           ]);
@@ -505,44 +517,77 @@ class LiveCatalog {
   }
 
   List<MediaItem> _merge(List<MediaItem> items) {
-    String key(MediaItem item) => '${item.kind}:${item.title.toLowerCase().trim()}:${item.year}';
-    String sourceKey(MediaItem item, MediaSource source) => '${item.kind}:${source.provider}:${source.sourceId}';
+    String key(MediaItem item) =>
+        '${item.kind}:${item.title.toLowerCase().trim()}:${item.year}';
+    String sourceKey(MediaItem item, MediaSource source) =>
+        '${item.kind}:${source.provider}:${source.sourceId}';
     MediaItem combine(MediaItem a, MediaItem b) {
       final sources = [...a.sources];
       for (final source in b.sources) {
-        final index = sources.indexWhere((v) => v.provider == source.provider && v.sourceId == source.sourceId);
-        if (index < 0) { sources.add(source); }
-        else {
+        final index = sources.indexWhere((v) =>
+            v.provider == source.provider && v.sourceId == source.sourceId);
+        if (index < 0) {
+          sources.add(source);
+        } else {
           final old = sources[index];
-          sources[index] = MediaSource(provider: source.provider, sourceId: source.sourceId,
-              pageUrl: source.pageUrl, posterUrl: source.posterUrl ?? old.posterUrl,
-              imdbId: source.imdbId ?? old.imdbId, originalTitle: source.originalTitle ?? old.originalTitle,
-              audio: source.audio.isNotEmpty ? source.audio : old.audio, quality: source.quality.isNotEmpty ? source.quality : old.quality);
+          sources[index] = MediaSource(
+              provider: source.provider,
+              sourceId: source.sourceId,
+              pageUrl: source.pageUrl,
+              posterUrl: source.posterUrl ?? old.posterUrl,
+              imdbId: source.imdbId ?? old.imdbId,
+              originalTitle: source.originalTitle ?? old.originalTitle,
+              audio: source.audio.isNotEmpty ? source.audio : old.audio,
+              quality:
+                  source.quality.isNotEmpty ? source.quality : old.quality);
         }
       }
-      return MediaItem(id: a.id, title: a.title,
+      return MediaItem(
+          id: a.id,
+          title: a.title,
           description: a.description.isNotEmpty ? a.description : b.description,
           genre: a.genre.isNotEmpty ? a.genre : b.genre,
-          audio: audioLabel('${a.audio} ${b.audio}'), tags: {...a.tags, ...b.tags}.toList(),
+          audio: audioLabel('${a.audio} ${b.audio}'),
+          tags: {...a.tags, ...b.tags}.toList(),
           year: a.year > 0 ? a.year : b.year,
-          durationMinutes: a.durationMinutes > 0 ? a.durationMinutes : b.durationMinutes,
-          posterUrl: a.posterUrl ?? b.posterUrl, backdropUrl: a.backdropUrl ?? b.backdropUrl,
+          durationMinutes:
+              a.durationMinutes > 0 ? a.durationMinutes : b.durationMinutes,
+          posterUrl: a.posterUrl ?? b.posterUrl,
+          backdropUrl: a.backdropUrl ?? b.backdropUrl,
           streamUrl: a.streamUrl ?? b.streamUrl,
-          streamHeaders: a.streamUrl != null ? a.streamHeaders : b.streamHeaders,
-          kind: a.kind, isSeries: a.isSeries || b.isSeries, sources: sources);
+          streamHeaders:
+              a.streamUrl != null ? a.streamHeaders : b.streamHeaders,
+          kind: a.kind,
+          isSeries: a.isSeries || b.isSeries,
+          sources: sources);
     }
+
     final groups = <String, MediaItem>{};
     final sourceGroups = <String, String>{};
     for (final raw in items) {
-      final original = raw.copyWith(sources: raw.sources.map((s) => MediaSource(
-        provider: s.provider, sourceId: s.sourceId, pageUrl: s.pageUrl,
-        posterUrl: s.posterUrl, imdbId: s.imdbId, originalTitle: s.originalTitle,
-        audio: s.audio.isNotEmpty ? s.audio : raw.sources.length == 1 ? raw.audio : '', quality: s.quality)).toList());
+      final original = raw.copyWith(
+          sources: raw.sources
+              .map((s) => MediaSource(
+                  provider: s.provider,
+                  sourceId: s.sourceId,
+                  pageUrl: s.pageUrl,
+                  posterUrl: s.posterUrl,
+                  imdbId: s.imdbId,
+                  originalTitle: s.originalTitle,
+                  audio: s.audio.isNotEmpty
+                      ? s.audio
+                      : raw.sources.length == 1
+                          ? raw.audio
+                          : '',
+                  quality: s.quality))
+              .toList());
       var item = original;
       for (final source in original.sources) {
         final previousKey = sourceGroups[sourceKey(original, source)];
         final previous = groups[previousKey];
-        if (previous != null && previousKey != key(item) && (previous.year == 0 || item.year == 0)) {
+        if (previous != null &&
+            previousKey != key(item) &&
+            (previous.year == 0 || item.year == 0)) {
           groups.remove(previousKey);
           item = combine(previous, item);
         }
@@ -551,13 +596,28 @@ class LiveCatalog {
       final previous = groups[id];
       if (previous != null) item = combine(previous, item);
       groups[id] = item;
-      for (final source in item.sources) { sourceGroups[sourceKey(item, source)] = id; }
+      for (final source in item.sources) {
+        sourceGroups[sourceKey(item, source)] = id;
+      }
     }
-    return groups.values.map((i) => MediaItem(id: key(i), title: i.title,
-        description: i.description, genre: i.genre, audio: i.audio, tags: i.tags,
-        year: i.year, durationMinutes: i.durationMinutes, posterUrl: i.posterUrl,
-        backdropUrl: i.backdropUrl, streamUrl: i.streamUrl, streamHeaders: i.streamHeaders,
-        kind: i.kind, isSeries: i.isSeries, sources: i.sources)).toList();
+    return groups.values
+        .map((i) => MediaItem(
+            id: key(i),
+            title: i.title,
+            description: i.description,
+            genre: i.genre,
+            audio: i.audio,
+            tags: i.tags,
+            year: i.year,
+            durationMinutes: i.durationMinutes,
+            posterUrl: i.posterUrl,
+            backdropUrl: i.backdropUrl,
+            streamUrl: i.streamUrl,
+            streamHeaders: i.streamHeaders,
+            kind: i.kind,
+            isSeries: i.isSeries,
+            sources: i.sources))
+        .toList();
   }
 
   Future<List<Map<String, dynamic>>> episodes(MediaSource source) async {

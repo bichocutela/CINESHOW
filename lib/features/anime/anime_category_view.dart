@@ -6,7 +6,10 @@ import '../../core/services/poster_sources.dart';
 
 class AnimeCategoryView extends StatefulWidget {
   const AnimeCategoryView(
-      {super.key, required this.onOpen, this.active = true, this.serviceFactory});
+      {super.key,
+      required this.onOpen,
+      this.active = true,
+      this.serviceFactory});
   final AnimeCatalogService Function(String provider)? serviceFactory;
   final Future<void> Function(MediaItem item, String? episode) onOpen;
   final bool active;
@@ -17,7 +20,9 @@ class AnimeCategoryView extends StatefulWidget {
 class _AnimeCategoryViewState extends State<AnimeCategoryView>
     with WidgetsBindingObserver {
   String provider = 'animesonlinecc';
-  AnimeCatalogService get service => widget.serviceFactory?.call(provider) ?? AnimeCatalogService(provider: provider);
+  AnimeCatalogService get service =>
+      widget.serviceFactory?.call(provider) ??
+      AnimeCatalogService(provider: provider);
   final searchController = TextEditingController();
   List<MediaItem> recent = [], episodes = [], items = [];
   List<Map<String, dynamic>> notices = [];
@@ -53,15 +58,24 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
     if (loading || !mounted) return;
     final request = ++generation;
     final selectedService = service;
-    setState(() { loading = true; error = null; });
+    setState(() {
+      loading = true;
+      error = null;
+    });
     try {
       final data = await selectedService.refresh();
       final rows = await selectedService.notices();
       if (mounted && request == generation) {
-        setState(() { recent = data['titles']!; episodes = data['episodes']!; notices = rows; });
+        setState(() {
+          recent = data['titles']!;
+          episodes = data['episodes']!;
+          notices = rows;
+        });
       }
     } catch (_) {
-      if (mounted && request == generation) setState(() => error = 'A fonte não respondeu. Exibindo os dados salvos.');
+      if (mounted && request == generation)
+        setState(
+            () => error = 'A fonte não respondeu. Exibindo os dados salvos.');
     } finally {
       if (mounted && request == generation) setState(() => loading = false);
     }
@@ -70,15 +84,22 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
   Future<void> _mode(String value) async {
     debounce?.cancel();
     final request = ++generation;
-    setState(() { mode = value; loading = false; });
-    if (value == 'A–Z') { await _list(reset: true); }
-    else if (value == 'Recentes') { await _refresh(); }
-    else if (value == 'Novidades') {
+    setState(() {
+      mode = value;
+      loading = false;
+    });
+    if (value == 'A–Z') {
+      await _list(reset: true);
+    } else if (value == 'Recentes') {
+      await _refresh();
+    } else if (value == 'Novidades') {
       try {
         final rows = await service.notices(markRead: true);
         if (mounted && request == generation) setState(() => notices = rows);
       } catch (_) {
-        if (mounted && request == generation) setState(() => error = 'Não foi possível carregar as novidades agora.');
+        if (mounted && request == generation)
+          setState(
+              () => error = 'Não foi possível carregar as novidades agora.');
       }
     }
   }
@@ -246,7 +267,9 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
                         onSelected: (_) => _mode(value))),
               IconButton(
                   tooltip: 'Atualizar animes',
-                  onPressed: loading ? null : () => mode == 'A–Z' ? _list(reset: true) : _refresh(),
+                  onPressed: loading
+                      ? null
+                      : () => mode == 'A–Z' ? _list(reset: true) : _refresh(),
                   icon: const Icon(Icons.refresh))
             ])),
         if (mode == 'A–Z')
@@ -264,7 +287,8 @@ class _AnimeCategoryViewState extends State<AnimeCategoryView>
                       child: ChoiceChip(
                           label: Text(String.fromCharCode(code)),
                           selected: letter == String.fromCharCode(code),
-                          onSelected: (_) => _letter(String.fromCharCode(code))))
+                          onSelected: (_) =>
+                              _letter(String.fromCharCode(code))))
               ])),
         if (loading || opening) const LinearProgressIndicator(),
         if (error != null)

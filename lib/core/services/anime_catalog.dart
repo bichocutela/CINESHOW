@@ -39,7 +39,8 @@ List<MediaItem> parseAnimeCards(String html, {bool episodes = false}) {
         provider: 'animesonlinecc',
         sourceId: uri.pathSegments.where((v) => v.isNotEmpty).last,
         pageUrl: uri.toString(),
-        audio: audioLabel('${catalogAudio(text)} $title'), quality: catalogQuality(text),
+        audio: audioLabel('${catalogAudio(text)} $title'),
+        quality: catalogQuality(text),
         posterUrl: picture == null
             ? null
             : Uri.parse('$animeOrigin/').resolve(picture).toString());
