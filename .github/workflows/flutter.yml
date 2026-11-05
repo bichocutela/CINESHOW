@@ -125,15 +125,14 @@ jobs:
           generate_release_notes: true
           body: |
             Atualização oficial com a mesma assinatura permanente.
-            - SuperFlix: filmes, séries, doramas, animes, canais e agenda.
-            - MegaFilmes como fonte adicional com busca e catálogo paginado.
-            - Categoria Anime com A–Z, recentes e novidades próprias.
-            - Capítulos em blocos de até 100 e área segura para alcançar o último item.
-            - Adicionados recentemente na página inicial.
-            - Sinopse, ficha e elenco clicável com atribuição e cache.
-            Notas IMDb/Rotten Tomatoes dependem do backend com OMDB_API_KEY configurada.
-            Elenco lista títulos já indexados no aparelho. Players incorporados dependem da fonte.
-            Downloads e progresso nativo são disponíveis somente para mídia direta compatível.
+            - SuperFlix e Agenda: lista verificada de reserva, data de atualização e botão de tentar novamente.
+            - Diretórios públicos de reserva atualizados automaticamente, sem guardar links privados de vídeo.
+            - TV Aberta Online em Ao Vivo e como fonte de novelas, com temporadas e capítulos.
+            - Links dos canais renovados na abertura e servidores alternativos publicados pela fonte.
+            - IMDb em /10, Tomatometer e Popcornmeter em percentuais separados.
+            - Leitura do elenco publicado nas fontes e lista completa com os papéis disponíveis.
+            - Migração dos players RedeFlix do domínio descontinuado para o endereço anunciado.
+            Avaliações e disponibilidade variam por fonte. IMDb reproduzido por terceiros é identificado como tal.
             Abra Sobre e verifique a atualização para baixar pelo próprio CINESHOW.
     permissions:
       contents: write

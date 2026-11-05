@@ -28,6 +28,7 @@ class MediaSource {
         'animesonlinecc' => 'Animes Online',
         'megafilmes' => 'Mega Filmes',
         'superflix' => 'SuperFlixAPI',
+        'tvaberta' => 'TV Aberta Online',
         _ => provider
       };
 }

@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'player_migrations.dart';
 
 String providerEmbedHtml(String url) {
+  url = canonicalPlayerUrl(url);
   final uri = Uri.tryParse(url);
   if (uri == null ||
       uri.scheme != 'https' ||
@@ -15,7 +17,8 @@ String providerEmbedHtml(String url) {
 }
 
 String providerEmbedBase(String url, Map<String, String> headers) {
-  final referer = Uri.tryParse(headers['Referer'] ?? '');
+  url = canonicalPlayerUrl(url);
+  final referer = Uri.tryParse(canonicalPlayerUrl(headers['Referer'] ?? ''));
   return referer != null &&
           referer.scheme == 'https' &&
           referer.host.isNotEmpty &&

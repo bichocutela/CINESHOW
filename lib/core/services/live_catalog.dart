@@ -13,6 +13,7 @@ import 'source_session.dart';
 import 'anime_catalog.dart';
 import 'mega_catalog.dart';
 import 'superflix_catalog.dart';
+import 'tv_aberta.dart';
 import 'package:flutter/foundation.dart';
 export 'source_session.dart' show SourceSession;
 export 'source_html.dart' show plain, attributes;
@@ -86,7 +87,7 @@ class LiveCatalog {
         } catch (_) {
           // Keep available sources if Amyflix is temporarily unavailable.
         }
-        for (final extra in [_mega, _superflix]) {
+        for (final extra in [_mega, _superflix, _tvAberta]) {
           try {
             items = _merge([...items, ...await extra(query: query)]);
           } catch (_) {}
@@ -103,6 +104,7 @@ class LiveCatalog {
         .map((entry) async {
       final session = sessionFactory(entry.value);
       try {
+        if (entry.key == 'tvaberta') return await _tvAberta(query: query);
         if (entry.key == 'megafilmes') return await _mega(query: query);
         if (entry.key == 'superflix') return await _superflix(query: query);
         if (entry.key == 'amyflix' && query == null) {
@@ -138,6 +140,8 @@ class LiveCatalog {
     if (query == null && merged.isNotEmpty) await _save(merged);
     return CatalogResult(filtered, errors);
   }
+
+  Future<List<MediaItem>> _tvAberta({String? query}) => TvAbertaService().novelas(query: query);
 
   Future<List<MediaItem>> _mega({String? query}) async {
     final session = sessionFactory(megaOrigin);
@@ -541,6 +545,7 @@ class LiveCatalog {
   }
 
   Future<List<Map<String, dynamic>>> episodes(MediaSource source) async {
+    if (source.provider == 'tvaberta') return TvAbertaService().episodes(source.sourceId);
     if (source.provider == 'superflix') return [];
     if (source.provider == 'animesonlinecc' ||
         source.provider == 'megafilmes') {

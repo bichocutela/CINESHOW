@@ -5,14 +5,17 @@ import '../../core/services/superflix_catalog.dart';
 import '../player/presentation/source_page.dart';
 
 class SuperflixLiveView extends StatefulWidget {
-  const SuperflixLiveView({super.key, this.events = false});
+  const SuperflixLiveView({super.key, this.events = false, this.service});
+  final SuperflixService? service;
   final bool events;
   @override
   State<SuperflixLiveView> createState() => _SuperflixLiveViewState();
 }
 
 class _SuperflixLiveViewState extends State<SuperflixLiveView> {
+  late final service = widget.service ?? SuperflixService();
   List<Map<String, dynamic>> items = [];
+  String? updated;
   String query = '', category = '';
   String? error;
   bool loading = true, refreshing = false;
@@ -26,9 +29,10 @@ class _SuperflixLiveViewState extends State<SuperflixLiveView> {
   Future<void> _initial() async {
     final prefs = await SharedPreferences.getInstance();
     try {
-      final cached = ((jsonDecode(prefs.getString(key) ?? '[]')) as List)
+      var cached = ((jsonDecode(prefs.getString(key) ?? '[]')) as List)
           .map((v) => Map<String, dynamic>.from(v as Map))
           .toList();
+      if (cached.isEmpty) cached = await service.cachedLive(events: widget.events);
       if (mounted) {
         setState(() {
           items = cached;
@@ -36,24 +40,28 @@ class _SuperflixLiveViewState extends State<SuperflixLiveView> {
         });
       }
     } catch (_) {}
-    await _refresh();
+    if (mounted) await _refresh();
   }
 
   Future<void> _refresh() async {
-    if (refreshing) return;
+    if (refreshing || !mounted) return;
     setState(() {
       refreshing = true;
       error = null;
     });
     try {
-      final rows = await SuperflixService().live(events: widget.events);
+      final rows = await service.live(events: widget.events);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(key, jsonEncode(rows));
-      if (mounted) setState(() => items = rows);
+      if (mounted) setState(() {
+        items = rows;
+        updated = service.lastUpdatedAt?.toLocal().toString().split('.').first;
+        error = service.usingSnapshot ? '${service.lastError ?? 'Consulta direta indisponível.'} Exibindo a lista de reserva verificada.' : null;
+      });
     } catch (_) {
       if (mounted) {
         setState(() => error =
-            'Não foi possível atualizar esta fonte. Os dados salvos continuam disponíveis.');
+            items.isEmpty ? 'Não foi possível carregar a fonte. Tente novamente.' : 'Não foi possível atualizar. Exibindo a última lista salva.');
       }
     } finally {
       if (mounted) {
@@ -139,12 +147,15 @@ class _SuperflixLiveViewState extends State<SuperflixLiveView> {
                   ],
                   onChanged: (v) => setState(() => category = v ?? '')),
               if (refreshing) const LinearProgressIndicator(),
+              if (updated != null) Text('Lista verificada em: $updated', style: const TextStyle(fontSize: 12, color: Colors.white60)),
               if (error != null) Text(error!),
+              OutlinedButton.icon(onPressed: refreshing ? null : _refresh,
+                icon: const Icon(Icons.refresh), label: const Text('Atualizar lista')),
               if (loading)
                 const Padding(
                     padding: EdgeInsets.all(24),
                     child: Center(child: CircularProgressIndicator())),
-              if (!loading && rows.isEmpty)
+              if (!loading && error == null && rows.isEmpty)
                 const Padding(
                     padding: EdgeInsets.all(24),
                     child: Text('Nenhum resultado com estes filtros.')),

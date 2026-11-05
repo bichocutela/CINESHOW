@@ -3,6 +3,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/models/media_item.dart';
 import '../../core/services/title_information.dart';
 import 'actor_titles_page.dart';
+import 'title_ratings.dart';
+import 'published_cast.dart';
 
 class TitleInformation extends StatefulWidget {
   const TitleInformation(
@@ -53,18 +55,6 @@ class _TitleInformationState extends State<TitleInformation> {
     }
   }
 
-  Widget _rating(String source, String value) => Expanded(
-      child: Card(
-          child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(source,
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    Text(value)
-                  ]))));
   @override
   Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>>(
       future: future,
@@ -132,39 +122,19 @@ class _TitleInformationState extends State<TitleInformation> {
                 Text('Duração: ${data['runtime']}'),
               if ((data['cast'] as List?)?.isNotEmpty == true) ...[
                 const SizedBox(height: 12),
-                const Text('Elenco informado',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                Wrap(spacing: 8, children: [
-                  for (final actor
-                      in (data['cast'] as List).whereType<String>())
-                    ActionChip(
-                        label: Text(actor),
-                        onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                                builder: (_) => ActorTitlesPage(
-                                    name: actor, onOpen: widget.onOpenTitle))))
-                ])
+                PublishedCast(names: (data['cast'] as List).whereType<String>().toList(),
+                  details: (data['castDetails'] as List? ?? []).whereType<Map>().toList(),
+                  onActor: (actor) => Navigator.push(context, MaterialPageRoute<void>(
+                    builder: (_) => ActorTitlesPage(name: actor, onOpen: widget.onOpenTitle))))
               ],
               const SizedBox(height: 18),
               const Text('Avaliações',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Row(children: [
-                _rating(
-                    'IMDb',
-                    data['imdbRating'] == null
-                        ? 'Sem nota disponível'
-                        : '${data['imdbRating']} / 10'),
-                _rating(
-                    'Rotten Tomatoes®',
-                    data['rtRating'] == null
-                        ? 'Sem nota disponível'
-                        : '${data['rtRating']}%')
-              ]),
-              if (data['imdbRating'] != null || data['rtRating'] != null)
-                const Text('Avaliações consultadas via OMDb.',
-                    style: TextStyle(fontSize: 12, color: Colors.white60)),
+              TitleRatings(data: data, onImdb: () => _open(imdbUri), onRotten: () => _open(rtUri)),
+              if (data['imdbRatingSource'] != null)
+                Padding(padding: const EdgeInsets.only(top: 6), child: Text('${data['imdbRatingSource']}',
+                    style: const TextStyle(fontSize: 11, color: Colors.white60))),
               Wrap(spacing: 8, children: [
                 OutlinedButton.icon(
                     onPressed: () => _open(imdbUri),

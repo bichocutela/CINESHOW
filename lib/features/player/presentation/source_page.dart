@@ -1,5 +1,6 @@
 import 'dart:async';
 import '../../../core/services/source_navigation.dart';
+import '../../../core/services/player_migrations.dart';
 import '../../../core/services/provider_embed.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -25,10 +26,11 @@ class SourcePage extends StatefulWidget {
 }
 
 class _SourcePageState extends State<SourcePage> {
+  String get playerUrl => canonicalPlayerUrl(widget.url);
   late final WebViewController controller;
   late final navigation = SourceNavigationPolicy(widget.embedded
-      ? providerEmbedBase(widget.url, widget.headers)
-      : widget.url);
+      ? providerEmbedBase(playerUrl, widget.headers)
+      : playerUrl);
   int progress = 0;
   bool failed = false;
   bool advancing = false;
@@ -114,8 +116,8 @@ class _SourcePageState extends State<SourcePage> {
       progress = 0;
     });
     if (widget.embedded) {
-      await controller.loadHtmlString(providerEmbedHtml(widget.url),
-          baseUrl: providerEmbedBase(widget.url, widget.headers));
+      await controller.loadHtmlString(providerEmbedHtml(playerUrl),
+          baseUrl: providerEmbedBase(playerUrl, widget.headers));
     } else {
       await controller.loadRequest(Uri.parse(navigation.retryUrl),
           headers: widget.headers);
@@ -139,7 +141,7 @@ class _SourcePageState extends State<SourcePage> {
 
   Future<void> _external() async {
     try {
-      await launchUrl(Uri.parse(widget.url),
+      await launchUrl(Uri.parse(playerUrl),
           mode: LaunchMode.externalApplication);
     } catch (_) {
       if (mounted) {

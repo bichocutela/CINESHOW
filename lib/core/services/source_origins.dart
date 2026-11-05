@@ -1,4 +1,5 @@
 const origins = {
+  'tvaberta': 'https://tvabertaonline.bbroot.com',
   'rtfilmes': 'https://filmesamadoresgratis.com',
   'tontons': 'https://filmeonlinebistrita.com',
   'xonados': 'https://www.xonados.com',
@@ -9,6 +10,7 @@ const origins = {
   'superflix': 'https://superflixapi.fun'
 };
 const sourceHostAliases = {
+  'tvabertaonline.bbroot.com': 'tvaberta',
   'animesonlinecc.to': 'animesonlinecc',
   'megafilmeshd1.com': 'megafilmes',
   'superflixapi.fun': 'superflix',

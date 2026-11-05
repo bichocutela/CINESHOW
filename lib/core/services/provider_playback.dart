@@ -7,6 +7,8 @@ import 'novelasflix.dart';
 import 'anime_catalog.dart';
 import 'mega_catalog.dart';
 import 'superflix_catalog.dart';
+import 'player_migrations.dart';
+import 'tv_aberta.dart';
 
 class ProviderPlaybackOption {
   const ProviderPlaybackOption(
@@ -52,6 +54,7 @@ class ProviderPlaybackResolver {
       bool discover = false,
       String? referer,
       bool xhr = false}) async {
+    uri = Uri.parse(canonicalPlayerUrl(uri.toString()));
     final initial = uri;
     for (var redirects = 0; redirects < 5; redirects++) {
       if (closed) throw StateError('Consulta cancelada.');
@@ -89,7 +92,7 @@ class ProviderPlaybackResolver {
         await response.stream.listen((_) {}).cancel();
         final location = response.headers['location'];
         if (location == null) throw StateError('Redirecionamento inválido.');
-        final next = uri.resolve(location);
+        final next = Uri.parse(canonicalPlayerUrl(uri.resolve(location).toString()));
         if (!discover && next.origin != initial.origin) {
           throw StateError('A fonte mudou de endereço durante a consulta.');
         }
@@ -132,6 +135,15 @@ class ProviderPlaybackResolver {
       {required String pageUrl}) async {
     final origin = origins[source.provider];
     if (origin == null) throw StateError('Fonte não reconhecida.');
+    if (source.provider == 'tvaberta') {
+      final episodes = await TvAbertaService().episodes(source.sourceId);
+      final chapter = episodes.where((v) => v['page_url'] == pageUrl).firstOrNull;
+      if (chapter == null) throw StateError('Capítulo não publicado por esta fonte.');
+      final headers = {'Referer': '$tvAbertaOrigin/', 'User-Agent': 'CINESHOW/0.6.1'};
+      if (!await _isVideo(pageUrl, headers)) throw StateError('A fonte não entregou mídia compatível para este capítulo.');
+      return [ProviderPlaybackOption(url: pageUrl, label: 'TV Aberta Online · ${chapter['title']}',
+          direct: true, id: 'tvaberta:${source.sourceId}:${chapter['id']}', headers: headers)];
+    }
     if (source.provider == 'superflix') {
       final uri = Uri.parse(pageUrl);
       if (uri.origin != superflixOrigin ||
@@ -215,7 +227,8 @@ class ProviderPlaybackResolver {
             : await _get(
                 '/wp-json/dooplayer/v2/${selection['post']}/${selection['type']}/${selection['source']}');
         final data = jsonDecode(response) as Map;
-        final url = data['embed_url'] as String?;
+        final rawUrl = data['embed_url'] as String?;
+      final url = rawUrl == null ? null : canonicalPlayerUrl(rawUrl);
         if (data['type'] != 'iframe' || url == null) return null;
         final uri = Uri.tryParse(url);
         if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) {
@@ -252,6 +265,10 @@ class ProviderPlaybackResolver {
 
   Future<List<ProviderPlaybackOption>> expand(
       ProviderPlaybackOption option) async {
+    final migrated = canonicalPlayerUrl(option.url);
+    if (migrated != option.url) {
+      option = ProviderPlaybackOption(url: migrated, label: option.label, direct: option.direct, id: option.id, headers: option.headers);
+    }
     final uri = Uri.parse(option.url);
     if (uri.host == 'www.blogger.com' || uri.host == 'blogger.com') {
       return _blogger(option);
@@ -272,7 +289,8 @@ class ProviderPlaybackResolver {
       final result = <ProviderPlaybackOption>[];
       for (final raw
           in ((resources['sources'] as List?) ?? []).whereType<Map>()) {
-        final value = raw['file'] as String?;
+        final rawValue = raw['file'] as String?;
+        final value = rawValue == null ? null : canonicalPlayerUrl(rawValue);
         final target = value == null ? null : Uri.tryParse(value);
         if (target == null || target.scheme != 'https' || target.host.isEmpty) {
           continue;

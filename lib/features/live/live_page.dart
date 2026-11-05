@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/iptv_catalog.dart';
 import 'live_player_page.dart';
 import 'superflix_live_view.dart';
+import 'tv_aberta_live_view.dart';
 
 const categoryNames = {
   'undefined': 'Sem categoria',
@@ -296,7 +297,7 @@ class _LivePageState extends State<LivePage> {
           Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: Wrap(spacing: 8, children: [
-                for (final value in ['IPTV', 'SuperFlix', 'Agenda'])
+                for (final value in ['IPTV', 'SuperFlix', 'Agenda', 'TV Aberta'])
                   ChoiceChip(
                       label: Text(value),
                       selected: source == value,
@@ -305,7 +306,7 @@ class _LivePageState extends State<LivePage> {
           Expanded(
               child: source == 'IPTV'
                   ? iptv
-                  : SuperflixLiveView(
+                  : source == 'TV Aberta' ? const TvAbertaLiveView() : SuperflixLiveView(
                       key: ValueKey(source), events: source == 'Agenda'))
         ]));
   }
