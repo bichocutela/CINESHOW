@@ -127,6 +127,33 @@ class ProviderPlaybackResolver {
     return uri;
   }
 
+  Map<String, String> _mediaHeaders(String url, String referer) {
+    final host = Uri.parse(url).host;
+    return {
+      'Referer': referer,
+      'User-Agent': 'CINESHOW/0.6.0',
+      if (cookies[host]?.isNotEmpty == true)
+        'Cookie': cookies[host]!.entries.map((e) => '${e.key}=${e.value}').join('; ')
+    };
+  }
+
+  Future<ProviderPlaybackOption> renew(MediaItem item, MediaSource source,
+      {required String pageUrl, required String optionId, required String label}) async {
+    final options = await resolve(item, source, pageUrl: pageUrl);
+    final matching = options.where((v) => v.id == optionId).toList();
+    final byLabel = options.where((v) => v.label == label).toList();
+    final choice = matching.isNotEmpty ? matching.first : byLabel.length == 1 ? byLabel.single : null;
+    if (choice == null) {
+      throw StateError('O player escolhido não está mais disponível. Escolha outra opção na fonte.');
+    }
+    final expanded = await expand(choice);
+    final direct = expanded.where((v) => v.direct).firstOrNull;
+    if (direct == null) {
+      throw StateError('A fonte oferece agora apenas o player incorporado. Volte aos detalhes para escolher.');
+    }
+    return direct;
+  }
+
   Future<String> _get(String path) => _text(_url(path));
   Future<String> _post(String path, String body) =>
       _text(_url(path), body: body);
@@ -316,10 +343,7 @@ class ProviderPlaybackResolver {
         if (target == null || target.scheme != 'https' || target.host.isEmpty) {
           continue;
         }
-        final headers = {
-          'Referer': '${uri.origin}/',
-          'User-Agent': 'CINESHOW/0.6.0'
-        };
+        final headers = _mediaHeaders(target.toString(), uri.toString());
         final direct = resources['iframe'] != true;
         if (direct && !await _isVideo(value!, headers)) continue;
         result.add(ProviderPlaybackOption(
@@ -377,7 +401,7 @@ class ProviderPlaybackResolver {
           label: 'Animes Online · ${labels['$index'] ?? 'Player $index'}',
           direct: false,
           id: 'animesonlinecc:$episode:$index',
-          headers: {'Referer': '$animeOrigin/'}));
+          headers: {'Referer': Uri.parse(animeOrigin).replace(path: episode).toString()}));
     }
     if (options.isEmpty) {
       throw StateError('Nenhum player publicado para este episódio.');
@@ -404,10 +428,7 @@ class ProviderPlaybackResolver {
             uri.userInfo.isNotEmpty) {
           continue;
         }
-        final headers = {
-          'Referer': 'https://www.blogger.com/',
-          'User-Agent': 'CINESHOW/0.6.0'
-        };
+        final headers = _mediaHeaders(uri.toString(), option.url);
         if (await _isVideo(uri.toString(), headers)) {
           return [
             ProviderPlaybackOption(
@@ -467,7 +488,7 @@ class ProviderPlaybackResolver {
         target.userInfo.isNotEmpty) {
       throw StateError('A fonte não liberou uma opção de reprodução.');
     }
-    final headers = {'Referer': '$_origin/', 'User-Agent': 'CINESHOW/0.6.0'};
+    final headers = _mediaHeaders(target.toString(), player.toString());
     final direct =
         data['mode'] != 'iframe' && await _isVideo(target.toString(), headers);
     return [
@@ -510,7 +531,8 @@ class ProviderPlaybackResolver {
         final raw = attributes(tag[0]!)['src'];
         if (raw == null) continue;
         final uri = base.resolve(raw);
-        if (uri.scheme != 'https' || !await _isVideo(uri.toString(), headers)) {
+        final mediaHeaders = _mediaHeaders(uri.toString(), base.toString());
+        if (uri.scheme != 'https' || !await _isVideo(uri.toString(), mediaHeaders)) {
           continue;
         }
         options.add(ProviderPlaybackOption(
@@ -518,11 +540,11 @@ class ProviderPlaybackResolver {
             label: 'Novelasflix · vídeo direto',
             direct: true,
             id: 'novelasflix:$episodePath',
-            headers: headers));
+            headers: mediaHeaders));
       }
     }
 
-    await mediaIn(html, Uri.parse(novelasflixOrigin));
+    await mediaIn(html, Uri.parse(novelasflixOrigin).replace(path: episodePath));
     for (final frame in RegExp(r'<iframe\b[^>]*>').allMatches(html)) {
       final raw = attributes(frame[0]!)['src'];
       if (raw == null) continue;
@@ -615,7 +637,7 @@ class ProviderPlaybackResolver {
     final result = <ProviderPlaybackOption>[];
     final date = episodeUrl.queryParameters['date']!;
     for (final url in urls.take(3)) {
-      final headers = {'Referer': '$_origin/', 'User-Agent': 'CINESHOW/0.6.0'};
+      final headers = _mediaHeaders(url, episodeUrl.toString());
       if (!await _isVideo(url, headers)) continue;
       result.add(ProviderPlaybackOption(
           url: url,

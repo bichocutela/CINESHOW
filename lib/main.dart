@@ -819,11 +819,24 @@ class _DetailsState extends State<DetailsPage> {
         await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
         await SystemChrome.setPreferredOrientations([]);
       }
+      Future<MediaItem> renewMedia() async {
+        final renewal = ProviderPlaybackResolver();
+        try {
+          final renewed = await renewal.renew(item, source, pageUrl: url,
+              optionId: playable.id, label: playable.label).timeout(const Duration(seconds: 90));
+          final refreshed = renewed.media(item);
+          try {
+            await ContinueWatching().save(item, source, url, refreshed.id, playerLabel: renewed.label);
+          } catch (_) { /* Playback is independent of history storage. */ }
+          return refreshed;
+        } finally { renewal.close(); }
+      }
       if (!mounted) return;
       final route = MaterialPageRoute<void>(
           builder: (_) => playable.direct
               ? PlayerPage(
                   media: media,
+                  renewMedia: renewMedia,
                   initialFullscreen: startFullscreen,
                   onNext: next == null ? null : advance)
               : SourcePage(
@@ -968,6 +981,11 @@ class _DetailsState extends State<DetailsPage> {
                   Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       child: Text(playbackError!)),
+                if (selected != null)
+                  OutlinedButton.icon(
+                      onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => SourcePage(title: item.title, url: selected!.pageUrl))),
+                      icon: const Icon(Icons.web),
+                      label: const Text('Abrir player da fonte no app')),
                 if (selected != null)
                   OutlinedButton.icon(
                       onPressed: () => _open(selected!.pageUrl),

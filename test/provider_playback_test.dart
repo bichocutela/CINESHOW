@@ -120,7 +120,8 @@ void main() {
       expect(result.single.direct, isTrue);
       expect(result.single.url, 'https://cdn.example/video?id=chapter');
       expect(result.single.media(item).id, contains('xonados:2:20261103'));
-      expect(result.single.headers['Referer'], 'https://www.xonados.com/');
+      expect(result.single.headers['Referer'], contains('/ast/OnW/'));
+      expect(result.single.headers['Referer'], contains('date=20261103'));
     } finally {
       resolver.close();
     }

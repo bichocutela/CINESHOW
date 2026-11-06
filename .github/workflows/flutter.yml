@@ -126,16 +126,11 @@ jobs:
           generate_release_notes: true
           body: |
             Atualização oficial com a mesma assinatura permanente.
-            - Detalhes buscam outras fontes do mesmo título, inclusive Anime no Mega Filmes; opções preservam áudio e qualidade informados por fonte.
-            - Minha lista independente da página inicial: salva filmes da busca, atores e animes.
-            - Preserva os identificadores dos títulos ao recarregar os dados.
-            - Corrige leitura de ano quando o card começa pela qualidade Dublado/Legendado.
-            - Evita duplicar um título quando o ano antes desconhecido é preenchido pela mesma fonte.
-            - Preserva links diretos e cabeçalhos ao mesclar o catálogo.
-            - Continuar assistindo lembra o player/áudio escolhido e tolera registros inválidos.
-            - Impede respostas antigas e pesquisas pendentes de mudarem a aba de Anime.
-            - Avisos simultâneos não se sobrescrevem; falhas de exclusão de downloads são tratadas.
-            Mantém as fontes existentes, atores online, informações e verificação de assinatura da atualização.
+            - Renovação de links e sessões ao tentar novamente vídeos de qualquer fonte direta.
+            - Player compatível alternativo para falhas de decodificação, com retomada e próximo capítulo.
+            - Xonados mantém o referer do capítulo e cookies apenas quando pertencem ao host do vídeo.
+            - Opção de abrir o player original da fonte dentro do app.
+            - Erros de filmes e novelas mostram ações adequadas e detalhes sem expor tokens.
             Abra Sobre e verifique a atualização para baixar pelo próprio CINESHOW.
     permissions:
       contents: write
