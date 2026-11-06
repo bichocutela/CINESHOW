@@ -2,22 +2,37 @@ name: Sync public live directories
 on:
   push:
     branches: [main]
-    paths: ['tools/sync_live_sources.py', '.github/workflows/live-directories.yml']
+    paths: ['tools/sync_live_sources.py', 'tests/test_live_snapshots.py', '.github/workflows/live-directories.yml']
+  pull_request:
+    paths: ['tools/sync_live_sources.py', 'tests/test_live_snapshots.py', '.github/workflows/live-directories.yml']
   schedule:
     - cron: '*/30 * * * *'
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
-  group: live-directories
+  group: live-directories-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+      - name: Test directory validation and recovery
+        run: python -m unittest discover -s tests -v
       - name: Refresh verified source snapshots
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: python tools/sync_live_sources.py --output /tmp/live-snapshots --publish
+      - name: Keep sync diagnostics
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-directory-sync-${{ github.run_id }}
+          path: /tmp/live-snapshots/sync-status.json
+          if-no-files-found: ignore
+          retention-days: 7
