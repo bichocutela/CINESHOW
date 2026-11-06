@@ -32,7 +32,8 @@ class PlayerPage extends StatefulWidget {
 class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   late final PlaybackGateway gateway =
       widget.playbackGateway ?? PersistentPlaybackGateway();
-  late final recovery = PlaybackRecovery(widget.media, renew: widget.renewMedia);
+  late final recovery =
+      PlaybackRecovery(widget.media, renew: widget.renewMedia);
   VideoPlayerController? controller;
   Timer? timer;
   String? error, detail;
@@ -73,10 +74,11 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       if (!mounted || request != generation) return;
       final media = recovery.media;
       final url = await const StreamResolver().resolve(media);
-      next = widget.controllerFactory?.call(media) ?? VideoPlayerController.networkUrl(
-        Uri.parse(url),
-        httpHeaders: media.streamHeaders,
-      );
+      next = widget.controllerFactory?.call(media) ??
+          VideoPlayerController.networkUrl(
+            Uri.parse(url),
+            httpHeaders: media.streamHeaders,
+          );
       controller = next;
       next.addListener(_changed);
       await next.initialize().timeout(const Duration(seconds: 60));
@@ -112,8 +114,10 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     if (!mounted) return;
     setState(() {
       if (controller?.value.hasError == true) {
-        error = 'O vídeo foi interrompido. Renove o link ou tente o player compatível.';
-        detail = safePlaybackDetail(controller!.value.errorDescription ?? 'Erro de reprodução.');
+        error =
+            'O vídeo foi interrompido. Renove o link ou tente o player compatível.';
+        detail = safePlaybackDetail(
+            controller!.value.errorDescription ?? 'Erro de reprodução.');
         loading = false;
       }
     });
@@ -173,9 +177,13 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     await _save();
     if (!mounted) return;
     handingOffFullscreen = true;
-    Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => CompatiblePlayerPage(
-      media: recovery.media, renewMedia: widget.renewMedia, playbackGateway: gateway,
-      onNext: widget.onNext, initialFullscreen: fullscreen)));
+    Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
+        builder: (_) => CompatiblePlayerPage(
+            media: recovery.media,
+            renewMedia: widget.renewMedia,
+            playbackGateway: gateway,
+            onNext: widget.onNext,
+            initialFullscreen: fullscreen)));
   }
 
   Future<void> _fullscreen() async {
@@ -251,11 +259,21 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                             FilledButton.icon(
                               onPressed: () => _initialize(renew: true),
                               icon: const Icon(Icons.refresh),
-                              label: Text(widget.renewMedia == null ? 'Tentar novamente' : 'Renovar link e tentar'),
+                              label: Text(widget.renewMedia == null
+                                  ? 'Tentar novamente'
+                                  : 'Renovar link e tentar'),
                             ),
-                            TextButton.icon(onPressed: switchingPlayer ? null : _compatible, icon: const Icon(Icons.settings_suggest), label: const Text('Tentar player compatível')),
-                            TextButton(onPressed: () => Navigator.maybePop(context), child: const Text('Escolher outra fonte')),
-                            if (detail != null) ExpansionTile(title: const Text('Detalhes do erro'), children: [SelectableText(detail!)]),
+                            TextButton.icon(
+                                onPressed: switchingPlayer ? null : _compatible,
+                                icon: const Icon(Icons.settings_suggest),
+                                label: const Text('Tentar player compatível')),
+                            TextButton(
+                                onPressed: () => Navigator.maybePop(context),
+                                child: const Text('Escolher outra fonte')),
+                            if (detail != null)
+                              ExpansionTile(
+                                  title: const Text('Detalhes do erro'),
+                                  children: [SelectableText(detail!)]),
                           ],
                         ),
                       )

@@ -8,7 +8,10 @@ class PlaybackRecovery {
   Future<MediaItem> retry() async {
     final refreshed = renew == null ? media : await renew!();
     final uri = Uri.tryParse(refreshed.streamUrl ?? '');
-    if (uri == null || !['http', 'https'].contains(uri.scheme) || uri.host.isEmpty || uri.userInfo.isNotEmpty) {
+    if (uri == null ||
+        !['http', 'https'].contains(uri.scheme) ||
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty) {
       throw StateError('A fonte não retornou um endereço de vídeo válido.');
     }
     media = refreshed;

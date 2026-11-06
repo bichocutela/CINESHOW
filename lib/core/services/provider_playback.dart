@@ -133,23 +133,32 @@ class ProviderPlaybackResolver {
       'Referer': referer,
       'User-Agent': 'CINESHOW/0.6.0',
       if (cookies[host]?.isNotEmpty == true)
-        'Cookie': cookies[host]!.entries.map((e) => '${e.key}=${e.value}').join('; ')
+        'Cookie':
+            cookies[host]!.entries.map((e) => '${e.key}=${e.value}').join('; ')
     };
   }
 
   Future<ProviderPlaybackOption> renew(MediaItem item, MediaSource source,
-      {required String pageUrl, required String optionId, required String label}) async {
+      {required String pageUrl,
+      required String optionId,
+      required String label}) async {
     final options = await resolve(item, source, pageUrl: pageUrl);
     final matching = options.where((v) => v.id == optionId).toList();
     final byLabel = options.where((v) => v.label == label).toList();
-    final choice = matching.isNotEmpty ? matching.first : byLabel.length == 1 ? byLabel.single : null;
+    final choice = matching.isNotEmpty
+        ? matching.first
+        : byLabel.length == 1
+            ? byLabel.single
+            : null;
     if (choice == null) {
-      throw StateError('O player escolhido não está mais disponível. Escolha outra opção na fonte.');
+      throw StateError(
+          'O player escolhido não está mais disponível. Escolha outra opção na fonte.');
     }
     final expanded = await expand(choice);
     final direct = expanded.where((v) => v.direct).firstOrNull;
     if (direct == null) {
-      throw StateError('A fonte oferece agora apenas o player incorporado. Volte aos detalhes para escolher.');
+      throw StateError(
+          'A fonte oferece agora apenas o player incorporado. Volte aos detalhes para escolher.');
     }
     return direct;
   }
@@ -401,7 +410,9 @@ class ProviderPlaybackResolver {
           label: 'Animes Online · ${labels['$index'] ?? 'Player $index'}',
           direct: false,
           id: 'animesonlinecc:$episode:$index',
-          headers: {'Referer': Uri.parse(animeOrigin).replace(path: episode).toString()}));
+          headers: {
+            'Referer': Uri.parse(animeOrigin).replace(path: episode).toString()
+          }));
     }
     if (options.isEmpty) {
       throw StateError('Nenhum player publicado para este episódio.');
@@ -532,7 +543,8 @@ class ProviderPlaybackResolver {
         if (raw == null) continue;
         final uri = base.resolve(raw);
         final mediaHeaders = _mediaHeaders(uri.toString(), base.toString());
-        if (uri.scheme != 'https' || !await _isVideo(uri.toString(), mediaHeaders)) {
+        if (uri.scheme != 'https' ||
+            !await _isVideo(uri.toString(), mediaHeaders)) {
           continue;
         }
         options.add(ProviderPlaybackOption(
@@ -544,7 +556,8 @@ class ProviderPlaybackResolver {
       }
     }
 
-    await mediaIn(html, Uri.parse(novelasflixOrigin).replace(path: episodePath));
+    await mediaIn(
+        html, Uri.parse(novelasflixOrigin).replace(path: episodePath));
     for (final frame in RegExp(r'<iframe\b[^>]*>').allMatches(html)) {
       final raw = attributes(frame[0]!)['src'];
       if (raw == null) continue;
