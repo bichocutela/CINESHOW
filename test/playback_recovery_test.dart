@@ -28,7 +28,10 @@ class RefusingController extends VideoPlayerController {
   Future<void> initialize() async =>
       throw StateError('decoder failed https://video.test/file?token=private');
   @override
-  Future<void> dispose() async {}
+  Future<void> dispose() async {
+    // No native player is allocated by this failing test controller.
+    await super.dispose().catchError((Object _) {});
+  }
 }
 
 class RenewalResolver extends ProviderPlaybackResolver {
