@@ -26,7 +26,6 @@ import 'features/details/title_information.dart';
 import 'features/anime/anime_category_view.dart';
 import 'core/services/anime_catalog.dart';
 import 'features/player/widgets/episode_pagination.dart';
-import 'core/services/catalog_arrivals.dart';
 
 void main() => runApp(const CineShowApp());
 
@@ -58,7 +57,6 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
   FavoriteState favoriteState = const FavoriteState({}, []);
   List<ContinueEntry> recent = [];
   List<MediaItem> items = [];
-  List<MediaItem> arrivals = [];
   List<String> errors = [];
   bool loading = true;
   int tab = 0;
@@ -91,7 +89,6 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
       items = cached;
       loading = cached.isEmpty;
     });
-    arrivals = await CatalogArrivals().recordAndSort(cached);
     await _recent();
     await _sync();
   }
@@ -100,7 +97,6 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
     try {
       final r = await catalog.refresh();
       final merged = catalog.mergeItems([...items, ...r.items]);
-      final sorted = await CatalogArrivals().recordAndSort(merged);
       final savedFavorites = await favoriteStore.load(known: merged);
       if (!mounted) return;
       setState(() {
@@ -108,7 +104,6 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
           items = catalog.mergeItems([...items, ...r.items]);
         }
         favoriteState = savedFavorites;
-        arrivals = sorted;
         errors = r.errors;
         loading = false;
       });
@@ -267,6 +262,8 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
     final visible = (category == null ? items : categoryItems ?? <MediaItem>[])
         .where((i) => filter == 'Todos' || i.typeLabel == filter)
         .toList();
+    // O destaque já representa o primeiro título da lista; não o repita na grade.
+    final exploreItems = visible.isEmpty ? visible : visible.skip(1).toList();
     return Scaffold(
         appBar: AppBar(
             toolbarHeight: 88,
@@ -375,40 +372,6 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
                           child: HeroCard(
                               item: visible.first,
                               onOpen: () => _details(visible.first))),
-                    if (category == null && arrivals.isNotEmpty)
-                      SliverToBoxAdapter(
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                            const Padding(
-                                padding: EdgeInsets.fromLTRB(16, 20, 16, 12),
-                                child: Text('Adicionados recentemente',
-                                    style: TextStyle(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.bold))),
-                            SizedBox(
-                                height: 250,
-                                child: ListView(
-                                    scrollDirection: Axis.horizontal,
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16),
-                                    children: [
-                                      for (final item in arrivals
-                                          .where((i) =>
-                                              filter == 'Todos' ||
-                                              i.typeLabel == filter)
-                                          .take(20))
-                                        Padding(
-                                            padding: const EdgeInsets.only(
-                                                right: 12),
-                                            child: SizedBox(
-                                                width: 135,
-                                                child: PosterCard(
-                                                    item: item,
-                                                    onOpen: () =>
-                                                        _details(item))))
-                                    ]))
-                          ])),
                     SliverToBoxAdapter(
                         child: CategoryBar(
                             section: filter,
@@ -426,7 +389,7 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
                     const SliverToBoxAdapter(
                         child: Padding(
                             padding: EdgeInsets.fromLTRB(16, 20, 16, 12),
-                            child: Text('Explore o catálogo',
+                            child: Text('Mais títulos',
                                 style: TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.bold)))),
@@ -435,9 +398,9 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
                         sliver: SliverGrid(
                             delegate: SliverChildBuilderDelegate(
                                 (context, index) => PosterCard(
-                                    item: visible[index],
-                                    onOpen: () => _details(visible[index])),
-                                childCount: visible.length),
+                                    item: exploreItems[index],
+                                    onOpen: () => _details(exploreItems[index])),
+                                childCount: exploreItems.length),
                             gridDelegate:
                                 const SliverGridDelegateWithMaxCrossAxisExtent(
                                     maxCrossAxisExtent: 180,
