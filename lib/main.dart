@@ -399,7 +399,8 @@ class _ShellState extends State<ShellPage> with WidgetsBindingObserver {
                             delegate: SliverChildBuilderDelegate(
                                 (context, index) => PosterCard(
                                     item: exploreItems[index],
-                                    onOpen: () => _details(exploreItems[index])),
+                                    onOpen: () =>
+                                        _details(exploreItems[index])),
                                 childCount: exploreItems.length),
                             gridDelegate:
                                 const SliverGridDelegateWithMaxCrossAxisExtent(
